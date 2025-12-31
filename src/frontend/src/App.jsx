@@ -10,20 +10,26 @@ import FluxManager from './components/FluxManager.jsx';
 import FluxModal from './components/FluxModal.jsx';
 import ModuleManager from './components/ModuleManager.jsx';
 import ModuleModal from './components/ModuleModal.jsx';
+import HomeDashboard from './components/HomeDashboard.jsx';
+import Documentation from './components/Documentation.jsx';
+import PublicKeyModal from './components/PublicKeyModal.jsx';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [password, setPassword] = useState('');
   const [publicKey, setPublicKey] = useState('');
   const [fluxes, setFluxes] = useState([]);
+  const [fluxStatuses, setFluxStatuses] = useState({});
   const [modules, setModules] = useState([]);
   const [logs, setLogs] = useState({});
   const [deployments, setDeployments] = useState([]);
   const [activeFlux, setActiveFlux] = useState(null);
   const [selectedDeploymentId, setSelectedDeploymentId] = useState(null);
-  const [view, setView] = useState('console');
+  const [view, setView] = useState('home');
   const [editingFlux, setEditingFlux] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showPublicKeyModal, setShowPublicKeyModal] = useState(false);
   const logEndRef = useRef(null);
   const socketRef = useRef(null);
 
@@ -37,11 +43,14 @@ export default function App() {
         setDeployments(prev => prev.some(d => d.id === deploymentId) ? prev : [ { id: deploymentId, status: 'running', start_time: new Date().toISOString() }, ...prev ]);
       }
     });
-    s.on('status', ({ appId, deploymentId, status }) => { if (appId === activeFlux) fetchDeployments(activeFlux); });
+    s.on('status', ({ appId, deploymentId, status }) => { 
+      if (appId === activeFlux) fetchDeployments(activeFlux); 
+      fetchFluxStatuses();
+    });
     return () => { s.off('log'); s.off('status'); };
   }, [activeFlux]);
 
-  useEffect(() => { if (token) { fetchFluxes(); fetchModules(); fetchPublicKey(); } }, [token]);
+  useEffect(() => { if (token) { fetchFluxes(); fetchModules(); fetchPublicKey(); fetchFluxStatuses(); } }, [token]);
   useEffect(() => { if (activeFlux && token) { setSelectedDeploymentId(null); fetchDeployments(activeFlux); } }, [activeFlux, token]);
     useEffect(() => {
       if (view === 'console' && selectedDeploymentId && logs[selectedDeploymentId]) {
@@ -65,6 +74,15 @@ export default function App() {
     } catch (err) { 
       console.error('Failed to fetch fluxes', err);
       if (err.response?.status === 401) handleLogout(); 
+    } 
+  };
+
+  const fetchFluxStatuses = async () => {
+    try {
+      const res = await axios.get('/api/fluxes/statuses', { headers: { Authorization: `Bearer ${token}` } });
+      setFluxStatuses(res.data);
+    } catch (err) {
+      console.error('Failed to fetch flux statuses', err);
     }
   };
 
@@ -158,13 +176,32 @@ export default function App() {
   return (
     <div className="h-screen flex bg-zinc-950 text-zinc-300 font-mono selection:bg-blue-500 selection:text-white overflow-hidden">
       <Sidebar 
-        fluxes={fluxes} activeFlux={activeFlux} setActiveFlux={setActiveFlux} view={view} setView={setView} onLogout={handleLogout} 
+        fluxes={fluxes} 
+        activeFlux={activeFlux} 
+        setActiveFlux={setActiveFlux} 
+        view={view} 
+        setView={setView} 
+        onLogout={handleLogout} 
         publicKey={publicKey}
         onNewFlux={() => { setEditingFlux({ id: '', name: '', repo: '', branch: 'main', cwd: '.', flow_config: '[]', ssh_host: '', ssh_user: '' }); setView('settings'); }}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+        fluxStatuses={fluxStatuses}
+        onShowPublicKey={() => setShowPublicKeyModal(true)}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {view === 'modules' ? (
+        {view === 'home' ? (
+          <HomeDashboard 
+            fluxes={fluxes} 
+            modules={modules} 
+            deployments={deployments} 
+            setView={setView}
+            setActiveFlux={setActiveFlux}
+          />
+        ) : view === 'docs' ? (
+          <Documentation />
+        ) : view === 'modules' ? (
           <ModuleManager 
             modules={modules} 
             onEdit={setEditingModule} 
@@ -215,6 +252,12 @@ export default function App() {
         onSave={saveModule} 
         onClose={() => setEditingModule(null)} 
         isEdit={!!(editingModule && modules.find(m => m.id === editingModule.id))} 
+      />
+
+      <PublicKeyModal 
+        isOpen={showPublicKeyModal}
+        onClose={() => setShowPublicKeyModal(false)}
+        publicKey={publicKey}
       />
     </div>
   );

@@ -22,7 +22,7 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.swarm.network=traefik-public"
-        - "traefik.http.routers.hookflux.rule=Host(`webhooks.$DOMAIN`)"
+        - "traefik.http.routers.hookflux.rule=Host(`webhook.cds-connect.online`)"
         - "traefik.http.routers.hookflux.entrypoints=https"
         - "traefik.http.routers.hookflux.tls=true"
         - "traefik.http.routers.hookflux.tls.certresolver=le"
