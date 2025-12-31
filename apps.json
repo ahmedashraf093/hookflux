@@ -1,0 +1,10 @@
+[
+  {
+    "id": "example-app",
+    "name": "Example Application",
+    "repo": "user/repo-name",
+    "branch": "main",
+    "script": "./scripts/deploy-example.sh",
+    "cwd": "."
+  }
+]
