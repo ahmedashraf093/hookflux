@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    image: swarm-deployer:latest
+    build: .
+    env_file: .env
+    networks:
+      - traefik-public
+    environment:
+      - PORT=3000
+    volumes:
+      - ./data.db:/app/data.db
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.swarm.network=traefik-public"
+        - "traefik.http.routers.swarm-deployer.rule=Host(`webhooks.$DOMAIN`)"
+        - "traefik.http.routers.swarm-deployer.entrypoints=https"
+        - "traefik.http.routers.swarm-deployer.tls=true"
+        - "traefik.http.routers.swarm-deployer.tls.certresolver=le"
+        - "traefik.http.services.swarm-deployer.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/apps"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  traefik-public:
+    external: true
