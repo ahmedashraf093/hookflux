@@ -13,42 +13,32 @@ import ModuleModal from './components/ModuleModal.jsx';
 import HomeDashboard from './components/HomeDashboard.jsx';
 import Documentation from './components/Documentation.jsx';
 import PublicKeyModal from './components/PublicKeyModal.jsx';
+import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [password, setPassword] = useState('');
-  const [publicKey, setPublicKey] = useState('');
-  const [fluxes, setFluxes] = useState([]);
-  const [fluxStatuses, setFluxStatuses] = useState({});
-  const [modules, setModules] = useState([]);
-  const [logs, setLogs] = useState({});
-  const [deployments, setDeployments] = useState([]);
-  const [activeFlux, setActiveFlux] = useState(null);
-  const [selectedDeploymentId, setSelectedDeploymentId] = useState(null);
-  const [view, setView] = useState('home');
-  const [editingFlux, setEditingFlux] = useState(null);
-  const [editingModule, setEditingModule] = useState(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [showPublicKeyModal, setShowPublicKeyModal] = useState(false);
-  const logEndRef = useRef(null);
-  const socketRef = useRef(null);
-
+// ...
   useEffect(() => {
-    if (!socketRef.current) socketRef.current = io();
+    if (!token) return;
+    
+    if (!socketRef.current) {
+      socketRef.current = io({
+        auth: { token }
+      });
+    }
+    
     const s = socketRef.current;
-    s.on('log', ({ appId, deploymentId, data }) => {
-      setLogs(prev => ({ ...prev, [deploymentId]: (prev[deploymentId] || '') + data }));
-      if (appId === activeFlux) {
-        setSelectedDeploymentId(deploymentId);
-        setDeployments(prev => prev.some(d => d.id === deploymentId) ? prev : [ { id: deploymentId, status: 'running', start_time: new Date().toISOString() }, ...prev ]);
-      }
-    });
-    s.on('status', ({ appId, deploymentId, status }) => { 
-      if (appId === activeFlux) fetchDeployments(activeFlux); 
-      fetchFluxStatuses();
-    });
+// ...
     return () => { s.off('log'); s.off('status'); };
-  }, [activeFlux]);
+  }, [activeFlux, token]);
+
+  // Clean up socket on logout
+  useEffect(() => {
+    if (!token && socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+  }, [token]);
 
   useEffect(() => { if (token) { fetchFluxes(); fetchModules(); fetchPublicKey(); fetchFluxStatuses(); } }, [token]);
   useEffect(() => { if (activeFlux && token) { setSelectedDeploymentId(null); fetchDeployments(activeFlux); } }, [activeFlux, token]);
@@ -126,13 +116,23 @@ export default function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('/api/login', { password });
+      const res = await axios.post('/api/login', { username, password });
       localStorage.setItem('token', res.data.token);
+      
+      // Initialize socket with new token before setting state
+      socketRef.current = io({ auth: { token: res.data.token } });
+      
       setToken(res.data.token);
+      setIsPasswordChangeRequired(res.data.changeRequired);
     } catch (err) { alert('Invalid credentials'); }
   };
 
-  const handleLogout = () => { localStorage.removeItem('token'); setToken(null); };
+  const handleLogout = () => { 
+    if (socketRef.current) socketRef.current.disconnect();
+    socketRef.current = null;
+    localStorage.removeItem('token'); 
+    setToken(null); 
+  };
 
   const triggerDeploy = async (id) => {
     try {
@@ -169,9 +169,27 @@ export default function App() {
     try { await axios.delete(`/api/modules/${id}`, { headers: { Authorization: `Bearer ${token}` } }); fetchModules(); } catch (err) {}
   };
 
-  if (!token) return <Login password={password} setPassword={setPassword} onLogin={handleLogin} />;
+  if (!token) return (
+    <Login 
+      username={username}
+      setUsername={setUsername}
+      password={password} 
+      setPassword={setPassword} 
+      onLogin={handleLogin} 
+    />
+  );
 
   const activeFluxConfig = fluxes.find(f => f.id === activeFlux);
+
+  // Helper to check token for changeRequired flag
+  const checkPasswordChangeRequired = () => {
+    if (isPasswordChangeRequired) return true;
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return !!payload.changeRequired;
+    } catch (e) { return false; }
+  };
 
   return (
     <div className="h-screen flex bg-zinc-950 text-zinc-300 font-mono selection:bg-blue-500 selection:text-white overflow-hidden">
@@ -258,6 +276,15 @@ export default function App() {
         isOpen={showPublicKeyModal}
         onClose={() => setShowPublicKeyModal(false)}
         publicKey={publicKey}
+      />
+
+      <ChangePasswordModal 
+        isOpen={checkPasswordChangeRequired()}
+        token={token}
+        setToken={(t) => {
+          setToken(t);
+          setIsPasswordChangeRequired(false);
+        }}
       />
     </div>
   );

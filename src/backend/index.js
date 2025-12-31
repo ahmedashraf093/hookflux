@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { initSchema, db } = require('./db');
-const { login, authMiddleware } = require('./auth');
+const { login, authMiddleware, changePassword } = require('./auth');
 const { startMaintenanceTask } = require('./maintenance');
 const { getPublicKey } = require('./ssh');
 
@@ -15,6 +15,25 @@ const { getPublicKey } = require('./ssh');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
+
+// Secure WebSocket connections
+const jwt = require('jsonwebtoken');
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+  
+  if (!token) return next(new Error('Authentication error'));
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(decoded.userId);
+    if (!user) return next(new Error('User not found'));
+    
+    socket.user = decoded;
+    next();
+  } catch (err) {
+    next(new Error('Invalid token'));
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 const UI_DIST = path.join(__dirname, '../frontend/dist');
@@ -37,13 +56,16 @@ const moduleRoutes = require('./routes/modules');
 const webhookRoutes = require('./routes/webhooks')(io);
 
 app.post('/api/login', login);
+app.use('/api', authMiddleware);
+
+app.post('/api/auth/change-password', changePassword);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-app.get('/api/system/public-key', authMiddleware, (req, res) => {
+app.get('/api/system/public-key', (req, res) => {
   const key = getPublicKey();
   key ? res.json({ publicKey: key }) : res.status(500).send('Failed to generate key');
 });
-app.use('/api/fluxes', authMiddleware, fluxRoutes);
-app.use('/api/modules', authMiddleware, moduleRoutes);
+app.use('/api/fluxes', fluxRoutes);
+app.use('/api/modules', moduleRoutes);
 app.use('/webhook', webhookRoutes);
 
 // Deployment Log Retrieval
