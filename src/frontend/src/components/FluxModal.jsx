@@ -68,9 +68,47 @@ export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modu
             <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest text-zinc-600">Target Branch_</label>
             <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all" value={flux.branch} onChange={e => setFlux({...flux, branch: e.target.value})} required />
           </div>
+          
           <div className="col-span-2">
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest text-zinc-600">Working Directory_</label>
-            <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all" value={flux.cwd} onChange={e => setFlux({...flux, cwd: e.target.value})} required />
+            <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-2">
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Execution_Environment</label>
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setFlux({...flux, ssh_host: ''})}
+                  className={`px-3 py-1 text-[9px] font-bold border transition-all ${!flux.ssh_host ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-600'}`}
+                >
+                  Local
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setFlux({...flux, ssh_host: flux.ssh_host || '127.0.0.1'})}
+                  className={`px-3 py-1 text-[9px] font-bold border transition-all ${flux.ssh_host ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-600'}`}
+                >
+                  Remote (SSH)
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-6">
+              {flux.ssh_host && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="col-span-1">
+                    <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">SSH Host (IP/Domain)_</label>
+                    <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-mono" value={flux.ssh_host} onChange={e => setFlux({...flux, ssh_host: e.target.value})} placeholder="192.168.1.100" required />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">SSH User_</label>
+                    <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-mono" value={flux.ssh_user} onChange={e => setFlux({...flux, ssh_user: e.target.value})} placeholder="ubuntu" required />
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">Working Directory (CWD)_</label>
+                <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all font-mono" value={flux.cwd} onChange={e => setFlux({...flux, cwd: e.target.value})} placeholder="/path/to/project" required />
+              </div>
+            </div>
           </div>
         </div>
 

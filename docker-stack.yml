@@ -28,7 +28,7 @@ services:
         - "traefik.http.routers.hookflux.tls.certresolver=le"
         - "traefik.http.services.hookflux.loadbalancer.server.port=3000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/apps"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

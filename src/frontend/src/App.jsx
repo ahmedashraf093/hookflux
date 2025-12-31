@@ -14,6 +14,7 @@ import ModuleModal from './components/ModuleModal.jsx';
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [password, setPassword] = useState('');
+  const [publicKey, setPublicKey] = useState('');
   const [fluxes, setFluxes] = useState([]);
   const [modules, setModules] = useState([]);
   const [logs, setLogs] = useState({});
@@ -40,13 +41,20 @@ export default function App() {
     return () => { s.off('log'); s.off('status'); };
   }, [activeFlux]);
 
-  useEffect(() => { if (token) { fetchFluxes(); fetchModules(); } }, [token]);
+  useEffect(() => { if (token) { fetchFluxes(); fetchModules(); fetchPublicKey(); } }, [token]);
   useEffect(() => { if (activeFlux && token) { setSelectedDeploymentId(null); fetchDeployments(activeFlux); } }, [activeFlux, token]);
     useEffect(() => {
       if (view === 'console' && selectedDeploymentId && logs[selectedDeploymentId]) {
         logEndRef.current?.scrollIntoView({ behavior: 'auto' });
       }
     }, [logs[selectedDeploymentId], selectedDeploymentId, view]);
+
+  const fetchPublicKey = async () => {
+    try {
+      const res = await axios.get('/api/system/public-key', { headers: { Authorization: `Bearer ${token}` } });
+      setPublicKey(res.data.publicKey);
+    } catch (err) {}
+  };
 
   const fetchFluxes = async () => {
     try {
@@ -151,7 +159,8 @@ export default function App() {
     <div className="h-screen flex bg-zinc-950 text-zinc-300 font-mono selection:bg-blue-500 selection:text-white overflow-hidden">
       <Sidebar 
         fluxes={fluxes} activeFlux={activeFlux} setActiveFlux={setActiveFlux} view={view} setView={setView} onLogout={handleLogout} 
-        onNewFlux={() => { setEditingFlux({ id: '', name: '', repo: '', branch: 'main', cwd: '.', flow_config: '[]' }); setView('settings'); }}
+        publicKey={publicKey}
+        onNewFlux={() => { setEditingFlux({ id: '', name: '', repo: '', branch: 'main', cwd: '.', flow_config: '[]', ssh_host: '', ssh_user: '' }); setView('settings'); }}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">

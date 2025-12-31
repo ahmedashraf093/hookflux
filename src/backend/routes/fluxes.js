@@ -9,10 +9,10 @@ module.exports = (io) => {
   });
 
   router.post('/', (req, res) => {
-    const { id, name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config } = req.body;
+    const { id, name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config, ssh_host, ssh_user } = req.body;
     try {
-      db.prepare('INSERT INTO apps (id, name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(id, name, repo, branch, script, cwd, webhook_secret, strategy || 'script', template_id || null, template_params || '{}', flow_config || '[]');
+      db.prepare('INSERT INTO apps (id, name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config, ssh_host, ssh_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(id, name, repo, branch, script, cwd, webhook_secret, strategy || 'script', template_id || null, template_params || '{}', flow_config || '[]', ssh_host || null, ssh_user || null);
       res.status(201).json({ success: true });
     } catch (err) {
       res.status(400).json({ error: err.message });
@@ -20,10 +20,10 @@ module.exports = (io) => {
   });
 
   router.put('/:id', (req, res) => {
-    const { name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config } = req.body;
+    const { name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config, ssh_host, ssh_user } = req.body;
     try {
-      db.prepare('UPDATE apps SET name = ?, repo = ?, branch = ?, script = ?, cwd = ?, webhook_secret = ?, strategy = ?, template_id = ?, template_params = ?, flow_config = ? WHERE id = ?')
-        .run(name, repo, branch, script, cwd, webhook_secret, strategy || 'script', template_id || null, template_params || '{}', flow_config || '[]', req.params.id);
+      db.prepare('UPDATE apps SET name = ?, repo = ?, branch = ?, script = ?, cwd = ?, webhook_secret = ?, strategy = ?, template_id = ?, template_params = ?, flow_config = ?, ssh_host = ?, ssh_user = ? WHERE id = ?')
+        .run(name, repo, branch, script, cwd, webhook_secret, strategy || 'script', template_id || null, template_params || '{}', flow_config || '[]', ssh_host || null, ssh_user || null, req.params.id);
       res.json({ success: true });
     } catch (err) {
       res.status(400).json({ error: err.message });

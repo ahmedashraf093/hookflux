@@ -59,8 +59,13 @@ export default function FluxManager({ fluxes, onEdit, onDelete }) {
           <div key={flux.id} className="bg-zinc-900 border border-zinc-800 p-6 shadow-xl group hover:border-blue-900 transition-colors">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="font-bold text-lg text-zinc-100 tracking-tight">{flux.name}</h3>
-                <p className="text-[10px] text-zinc-600 font-mono mt-1 uppercase tracking-tighter">SLUG: {flux.id}</p>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-bold text-lg text-zinc-100 tracking-tight">{flux.name}</h3>
+                  {flux.ssh_host && (
+                    <span className="bg-blue-900/30 text-blue-500 border border-blue-800 text-[8px] px-1.5 py-0.5 font-black uppercase tracking-widest shadow-sm">SSH</span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-600 font-mono mt-1 uppercase tracking-tighter">SLUG: {flux.id}</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => onEdit(flux)} title="Edit Configuration" className="p-2 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-blue-400 transition-colors"><Settings size={18} /></button>

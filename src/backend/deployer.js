@@ -60,12 +60,36 @@ function runDeploy(appConfig, io) {
     
     emitLog(`Generated pipeline script with ${flowSteps.length} steps.\n`);
 
-    const child = spawn('bash', [finalScriptPath], {
+    let spawnCmd = 'bash';
+    let spawnArgs = [finalScriptPath];
+
+    if (appConfig.ssh_host) {
+      const user = appConfig.ssh_user || 'root';
+      emitLog(`Target: Remote Host (${user}@${appConfig.ssh_host}) via SSH\n`);
+      
+      // We pipe the script to the remote bash to avoid file transfer issues
+      spawnCmd = 'ssh';
+      spawnArgs = [
+        '-o', 'StrictHostKeyChecking=no',
+        '-o', 'BatchMode=yes',
+        `${user}@${appConfig.ssh_host}`,
+        'bash -s'
+      ];
+    }
+
+    const child = spawn(spawnCmd, spawnArgs, {
       cwd: appConfig.cwd.startsWith('~') 
         ? appConfig.cwd.replace('~', process.env.HOME || process.env.USERPROFILE)
         : appConfig.cwd,
       env: { ...process.env, APP_ID: appConfig.id, DEPLOYMENT_ID: deploymentId }
     });
+
+    // If SSH, we need to pipe the script content to stdin
+    if (appConfig.ssh_host) {
+      const scriptContent = fs.readFileSync(finalScriptPath);
+      child.stdin.write(scriptContent);
+      child.stdin.end();
+    }
 
     child.on('error', (err) => {
       const errMsg = `\nFailed to start pipeline: ${err.message}\n`;

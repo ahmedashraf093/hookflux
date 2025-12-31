@@ -18,7 +18,9 @@ function initSchema() {
       strategy TEXT DEFAULT 'script',
       template_id TEXT,
       template_params TEXT,
-      flow_config TEXT
+      flow_config TEXT,
+      ssh_host TEXT,
+      ssh_user TEXT
     );
 
     CREATE TABLE IF NOT EXISTS deployments (
@@ -45,6 +47,8 @@ function initSchema() {
     db.exec("ALTER TABLE apps ADD COLUMN template_id TEXT");
     db.exec("ALTER TABLE apps ADD COLUMN template_params TEXT");
     db.exec("ALTER TABLE apps ADD COLUMN flow_config TEXT");
+    db.exec("ALTER TABLE apps ADD COLUMN ssh_host TEXT");
+    db.exec("ALTER TABLE apps ADD COLUMN ssh_user TEXT");
   } catch (e) {}
 
   // Seed default templates
