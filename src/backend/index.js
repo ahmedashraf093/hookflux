@@ -40,7 +40,7 @@ app.use(express.static(UI_DIST));
 // ... (other functions and endpoints)
 
 // All other requests return the React app
-app.get('*', (req, res) => {
+app.get('*splat', (req, res) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/webhook')) return;
   res.sendFile(path.join(UI_DIST, 'index.html'));
 });
