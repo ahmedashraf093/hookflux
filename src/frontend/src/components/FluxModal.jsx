@@ -264,7 +264,16 @@ export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modu
                   <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Module_Library</h4>
                   <p className="text-lg font-bold text-zinc-100 uppercase tracking-tight">Select module to insert</p>
                 </div>
-                <button type="button" onClick={() => setShowModuleSelector(false)} className="text-zinc-500 hover:text-zinc-200 transition-colors bg-zinc-900 p-2 border border-zinc-800"><X size={24} /></button>
+                <div className="flex gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => { setShowModuleSelector(false); onClose(); setView('modules'); }}
+                    className="text-orange-500 border border-orange-900/50 bg-orange-950/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 hover:text-black transition-all"
+                  >
+                    + Register_New_Script
+                  </button>
+                  <button type="button" onClick={() => setShowModuleSelector(false)} className="text-zinc-500 hover:text-zinc-200 transition-colors bg-zinc-900 p-2 border border-zinc-800"><X size={24} /></button>
+                </div>
               </div>
               
               <input 

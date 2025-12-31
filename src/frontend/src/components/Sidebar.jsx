@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Terminal, Settings, LogOut, Key, Home, ChevronsLeft, ChevronsRight, BookOpen } from 'lucide-react';
+import { Activity, Terminal, Settings, LogOut, Key, Home, ChevronsLeft, ChevronsRight, BookOpen, Menu, X } from 'lucide-react';
 
 export default function Sidebar({ 
   fluxes, 
@@ -13,7 +13,9 @@ export default function Sidebar({
   isCollapsed,
   setIsCollapsed,
   fluxStatuses = {},
-  onShowPublicKey
+  onShowPublicKey,
+  isMobileOpen,
+  setIsMobileOpen
 }) {
   const getStatusColor = (fluxId) => {
     const status = fluxStatuses[fluxId];
@@ -23,11 +25,12 @@ export default function Sidebar({
     return 'text-zinc-800';
   };
 
-  return (
-    <div className={`transition-all duration-300 ease-in-out bg-zinc-900 border-r border-zinc-800 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
+  const SidebarContent = () => (
+    <>
       <div className={`p-4 flex items-center gap-3 border-b border-zinc-800 bg-zinc-900/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
         <Activity size={20} className="text-blue-500 shrink-0" />
         {!isCollapsed && <h1 className="font-bold text-sm uppercase tracking-widest text-zinc-100">HOOK_FLUX</h1>}
+        <button className="md:hidden ml-auto text-zinc-500" onClick={() => setIsMobileOpen(false)}><X size={20}/></button>
       </div>
       
       <div className="flex-1 overflow-y-auto p-2 space-y-1 mt-2 custom-scrollbar">
@@ -39,7 +42,7 @@ export default function Sidebar({
         {fluxes.map(flux => (
           <button
             key={flux.id}
-            onClick={() => { setActiveFlux(flux.id); setView('console'); }}
+            onClick={() => { setActiveFlux(flux.id); setView('console'); setIsMobileOpen(false); }}
             title={isCollapsed ? flux.name : ''}
             className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''} ${
               activeFlux === flux.id && view === 'console' 
@@ -54,7 +57,7 @@ export default function Sidebar({
           </button>
         ))}
         <button
-          onClick={onNewFlux}
+          onClick={() => { onNewFlux(); setIsMobileOpen(false); }}
           className={`w-full text-left px-3 py-2 text-[10px] text-zinc-500 hover:text-blue-400 transition-colors mt-2 border border-dashed border-zinc-800 uppercase font-bold tracking-widest ${isCollapsed ? 'justify-center' : ''}`}
         >
           {isCollapsed ? '+' : '+ Create_Flux'}
@@ -72,14 +75,14 @@ export default function Sidebar({
           </button>
         )}
         <button 
-          onClick={() => setView('docs')}
+          onClick={() => { setView('docs'); setIsMobileOpen(false); }}
           title={isCollapsed ? 'Documentation' : ''}
           className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold transition-colors ${isCollapsed ? 'justify-center' : ''} ${view === 'docs' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-200'}`}
         >
           <BookOpen size={16} /> {!isCollapsed && 'Docs'}
         </button>
         <button 
-          onClick={() => setView('home')}
+          onClick={() => { setView('home'); setIsMobileOpen(false); }}
           title={isCollapsed ? 'Home' : ''}
           className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold transition-colors ${isCollapsed ? 'justify-center' : ''} ${view === 'home' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-200'}`}
         >
@@ -87,13 +90,13 @@ export default function Sidebar({
         </button>
         <button 
           onClick={() => setView('modules')}
-          title={isCollapsed ? 'Modules' : ''}
-          className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold transition-colors ${isCollapsed ? 'justify-center' : ''} ${view === 'modules' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-200'}`}
+          title={isCollapsed ? 'Shell Scripts' : ''}
+          className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold transition-colors ${isCollapsed ? 'justify-center' : ''} ${view === 'modules' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-orange-400'}`}
         >
-          <Terminal size={16} /> {!isCollapsed && 'Modules'}
+          <Terminal size={16} className={view === 'modules' ? 'text-orange-500' : ''} /> {!isCollapsed && 'Scripts'}
         </button>
         <button 
-          onClick={() => setView('settings')}
+          onClick={() => { setView('settings'); setIsMobileOpen(false); }}
           title={isCollapsed ? 'Settings' : ''}
           className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold transition-colors ${isCollapsed ? 'justify-center' : ''} ${view === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-200'}`}
         >
@@ -107,7 +110,7 @@ export default function Sidebar({
         </button>
       </div>
       
-      <div className="p-1 border-t border-zinc-800">
+      <div className="p-1 border-t border-zinc-800 hidden md:block">
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="w-full flex items-center justify-center p-1.5 text-xs font-bold text-zinc-600 hover:text-zinc-300 transition-colors"
@@ -115,6 +118,22 @@ export default function Sidebar({
           {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
         </button>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className={`hidden md:flex transition-all duration-300 ease-in-out bg-zinc-900 border-r border-zinc-800 flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
+        <SidebarContent />
+      </div>
+
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden bg-black/80 backdrop-blur-sm">
+          <div className="w-64 h-full bg-zinc-900 shadow-2xl flex flex-col animate-in slide-in-from-left duration-300">
+            <SidebarContent />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
