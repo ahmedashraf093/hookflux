@@ -9,6 +9,7 @@ const fs = require('fs');
 const { initSchema, db } = require('./db');
 const { login, authMiddleware } = require('./auth');
 const { startMaintenanceTask } = require('./maintenance');
+const { getPublicKey } = require('./ssh');
 
 // Initialize App
 const app = express();
@@ -36,6 +37,11 @@ const moduleRoutes = require('./routes/modules');
 const webhookRoutes = require('./routes/webhooks')(io);
 
 app.post('/api/login', login);
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/system/public-key', authMiddleware, (req, res) => {
+  const key = getPublicKey();
+  key ? res.json({ publicKey: key }) : res.status(500).send('Failed to generate key');
+});
 app.use('/api/fluxes', authMiddleware, fluxRoutes);
 app.use('/api/modules', authMiddleware, moduleRoutes);
 app.use('/webhook', webhookRoutes);
