@@ -1,36 +1,62 @@
-# HookFlux: Universal Webhook Pipeline Engine
+# HookFlux: Orchestrate Your Infrastructure with Signal-Driven Pipelines
 
-HookFlux is a self-hosted automation server that bridges external signals with local execution pipelines. It receives webhooks from platforms like GitHub and executes multi-step **Fluxes** built from reusable **Modules**.
+![HookFlux Dashboard](home.jpg)
 
-## Core Concepts
+HookFlux is a high-performance, self-hosted automation engine designed to transform external webhooks into complex, multi-step execution flows. Built for developers who demand the control of local bash scripts with the elegance of a modern TUI, HookFlux turns simple signals into sophisticated infrastructure orchestration.
 
-### Fluxes (Pipelines)
-A **Flux** is a top-level execution chain linked to a unique webhook endpoint. It defines the sequence of operations to perform when a signal is received.
+## The HookFlux Philosophy: Fluxes and Modules
 
-### Modules (Building Blocks)
-**Modules** are reusable bash script templates with dynamic parameters. They are the "Lego bricks" of HookFlux, allowing you to define logic once and reuse it across multiple Fluxes.
+HookFlux operates on a clean, powerful abstraction that eliminates repetitive scripting:
 
-## Features
+- **Modules (The Lego Bricks)**: Define your core logic once. Modules are reusable bash templates with dynamic IO parameters. Build a "Docker Build" module, a "Database Migration" module, or a "Discord Notify" module and use them everywhere.
+- **Fluxes (The Neural Paths)**: Chain your modules together to create a **Flux**. A Flux is a high-level pipeline triggered by a unique, slug-based webhook. It's the "flow" of your deployment or automation logic.
 
-- **TUI Dashboard**: A modern terminal-inspired interface with large, readable monospaced fonts.
-- **Pipeline Builder**: A visual chain constructor where you can add, configure, and reorder modules.
-- **Real-time Monitoring**: Execution logs are streamed live via Socket.io to a terminal-style console.
-- **Parameter Validation**: Visual indicators for incomplete configurations and missing variable values.
-- **Module Library**: A searchable library of execution blocks with parameter previews.
-- **Secure Webhooks**: HMAC-SHA256 signature verification and unique slug-based URLs.
+## Engineering Highlights
+
+### Visual Pipeline Architect
+Construct execution chains with an intuitive drag-and-drop builder. Link modules, reorder steps on the fly, and configure localized variables via dedicated configuration overlays.
+
+### Intelligent Parameter Validation
+Never trigger a broken pipeline again. HookFlux proactively scans your Flux configurations, highlighting missing parameters and incomplete setups with high-visibility alerts before you even commit your changes.
+
+### Zero-Latency TTY Streaming
+Experience your automation in real-time. HookFlux leverages Socket.io to stream raw terminal output directly to a specialized TUI dashboard. Every line, error, and exit code is delivered with sub-millisecond latency.
+
+### Searchable Module Library
+Quickly scale your operations by pulling from a centralized library of execution blocks. Preview required parameters and internal logic instantly via a searchable, high-contrast overlay.
+
+### Production-Grade Persistence & Maintenance
+- **Hybrid Log Engine**: Metadata lives in SQLite for lightning-fast lookups, while raw logs are streamed to disk for full-fidelity auditing.
+- **Auto-Maintenance**: Built-in 30-day retention policies and database compaction ensure HookFlux remains lean and fast, even under heavy load.
+- **Export Compatibility**: Export your Flux configurations directly to standard `adnanh/webhook` JSON for cross-platform portability.
 
 ## Technical Architecture
 
-- **Engine**: Node.js & Express 5 (Modular Backend).
-- **Interface**: React & Vite (Component-based Architecture).
-- **Storage**: SQLite for persistent Flux configurations, Module definitions, and Task history.
-- **Runtime**: multi-stage Docker image optimized for manager-node execution.
+HookFlux is engineered for speed and stability:
+- **Core**: Node.js & Express 5.
+- **Real-time**: Socket.io bidirectional streaming.
+- **UI**: React 19 + Vite + Tailwind CSS (Optimized TUI Aesthetic).
+- **Security**: HMAC-SHA256 Payload Verification + JWT Authentication.
+- **Packaging**: Multi-stage Docker image with integrated Git and Docker CLI.
 
-## Quick Start
+## Deployment Command Center
 
-1. **Deploy**: Use the provided `docker-stack.yml` to launch HookFlux.
-2. **Define Modules**: Create your first script block (e.g., "Build Docker Image") in the Module Manager.
-3. **Configure Flux**: Create a new Flux, add your modules as steps, and click the cog icon to fill in parameters.
-4. **Link Webhook**: Copy the Flux endpoint and add it to your GitHub repository.
+Launch your own execution engine in seconds:
 
-HookFlux: Automate everything, from local scripts to production swarm clusters.
+```bash
+# 1. Initialize persistent data stores
+touch data.db && mkdir -p logs && chmod 777 logs
+
+# 2. Deploy to Docker Swarm
+docker stack deploy -c docker-stack.yml hookflux
+```
+
+## How to Scale Your Workflow
+
+1. **Craft Your Modules**: Write your bash logic in the Module Manager using `{{VARIABLE}}` placeholders.
+2. **Build Your Flux**: Compose a pipeline by picking modules from your library.
+3. **Configure the Chain**: Hit the cog icon on each step to inject project-specific data.
+4. **Link the Signal**: Paste your unique Flux endpoint into GitHub or any webhook provider.
+5. **Watch the Magic**: Deployments, backups, and notifications now run on autopilot with live terminal feedback.
+
+HookFlux: Stop writing scripts. Start building flows.
