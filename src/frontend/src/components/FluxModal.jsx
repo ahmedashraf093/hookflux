@@ -1,11 +1,28 @@
 import React, { useState } from 'react';
-import { X, Settings, Trash2 } from 'lucide-react';
+import { X, Settings, Trash2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import * as api from '../lib/api';
 
 export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modules }) {
   if (!flux) return null;
   const [editingStepIndex, setEditingStepIndex] = useState(null);
   const [showModuleSelector, setShowModuleSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [testStatus, setTestStatus] = useState(null); // 'loading', 'success', 'error'
+  const [testError, setTestError] = useState('');
+
+  const handleTestSSH = async () => {
+    if (!flux.ssh_host || !flux.ssh_user) return alert('Host and User required for testing');
+    setTestStatus('loading');
+    setTestError('');
+    try {
+      await api.fluxes.testSsh({ ssh_host: flux.ssh_host, ssh_user: flux.ssh_user });
+      setTestStatus('success');
+      setTimeout(() => setTestStatus(null), 3000);
+    } catch (err) {
+      setTestStatus('error');
+      setTestError(err.response?.data?.error || 'Connection failed');
+    }
+  };
   
   let flowSteps = [];
   try {
@@ -91,16 +108,51 @@ export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modu
             </div>
             
             <div className="space-y-6">
-              {flux.ssh_host && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="col-span-1">
-                    <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">SSH Host (IP/Domain)_</label>
-                    <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-mono" value={flux.ssh_host} onChange={e => setFlux({...flux, ssh_host: e.target.value})} placeholder="192.168.1.100" required />
+              {flux.ssh_host ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-1">
+                      <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">SSH Host (IP/Domain)_</label>
+                      <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-mono" value={flux.ssh_host} onChange={e => setFlux({...flux, ssh_host: e.target.value})} placeholder="192.168.1.100" required />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">SSH User_</label>
+                      <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-mono" value={flux.ssh_user} onChange={e => setFlux({...flux, ssh_user: e.target.value})} placeholder="ubuntu" required />
+                    </div>
                   </div>
-                  <div className="col-span-1">
-                    <label className="block text-[9px] font-bold text-zinc-600 uppercase mb-1 tracking-widest">SSH User_</label>
-                    <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-mono" value={flux.ssh_user} onChange={e => setFlux({...flux, ssh_user: e.target.value})} placeholder="ubuntu" required />
+                  <div className="flex items-center gap-4">
+                    <button 
+                      type="button"
+                      onClick={handleTestSSH}
+                      disabled={testStatus === 'loading'}
+                      className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${
+                        testStatus === 'success' ? 'bg-green-900/20 border-green-500 text-green-500' :
+                        testStatus === 'error' ? 'bg-red-900/20 border-red-500 text-red-500' :
+                        'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                      }`}
+                    >
+                      {testStatus === 'loading' ? <Loader2 size={12} className="animate-spin" /> : 
+                       testStatus === 'success' ? <CheckCircle2 size={12} /> : 
+                       testStatus === 'error' ? <AlertCircle size={12} /> : null}
+                      {testStatus === 'loading' ? 'Testing...' : 'Test_Connection'}
+                    </button>
+                    {testStatus === 'error' && (
+                      <span className="text-[9px] font-bold text-red-900 uppercase tracking-tighter truncate max-w-[300px]">
+                        {testError}
+                      </span>
+                    )}
+                    {testStatus === 'success' && (
+                      <span className="text-[9px] font-bold text-green-900 uppercase tracking-tighter">
+                        Handshake_Success
+                      </span>
+                    )}
                   </div>
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <p className="text-[10px] text-zinc-600 italic uppercase tracking-widest">
+                    Executing logic on the local system environment.
+                  </p>
                 </div>
               )}
               

@@ -26,6 +26,7 @@ export const fluxes = {
   delete: (id) => api.delete(`/fluxes/${id}`),
   deploy: (id) => api.post(`/fluxes/${id}/deploy`),
   getDeployments: (id) => api.get(`/fluxes/${id}/deployments`),
+  testSsh: (data) => api.post('/fluxes/test-ssh', data),
 };
 
 export const modules = {
