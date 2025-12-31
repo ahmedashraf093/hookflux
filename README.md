@@ -39,6 +39,16 @@ HookFlux is engineered for speed and stability:
 - **Security**: HMAC-SHA256 Payload Verification + JWT Authentication.
 - **Packaging**: Multi-stage Docker image with integrated Git and Docker CLI.
 
+## Configuration
+
+Control HookFlux behavior via environment variables:
+- `ADMIN_PASSWORD`: Access key for the TUI dashboard.
+- `JWT_SECRET`: Secret used for signing authentication tokens.
+- `PIPELINE_TIMEOUT`: Maximum execution time for a Flux in minutes (Default: `10`).
+- `DATA_DIR`: Path to the SQLite database directory.
+- `LOGS_DIR`: Path to the raw execution logs directory.
+- `SSH_DIR`: Path to the system SSH key directory.
+
 ## Deployment Command Center
 
 Launch your own execution engine in seconds:
