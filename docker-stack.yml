@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -45,3 +45,4 @@ volumes:
   hookflux_data:
   hookflux_logs:
   hookflux_ssh:
+

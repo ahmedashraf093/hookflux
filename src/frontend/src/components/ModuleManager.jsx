@@ -6,13 +6,13 @@ export default function ModuleManager({ modules, onEdit, onDelete, onNew }) {
     <div className="p-12 max-w-6xl mx-auto w-full overflow-y-auto">
       <div className="flex justify-between items-center mb-12 border-b border-zinc-800 pb-6">
         <h2 className="text-2xl font-bold flex items-center gap-4 text-zinc-100 uppercase tracking-widest">
-          <Terminal className="text-blue-500" size={28} /> Pipeline_Modules
+          <Terminal className="text-orange-500" size={28} /> Shell_Scripts
         </h2>
         <button 
           onClick={onNew} 
-          className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 text-xs font-black uppercase tracking-[0.2em] transition-all shadow-xl"
+          className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2.5 text-xs font-black uppercase tracking-[0.2em] transition-all shadow-xl"
         >
-          + Create_Module
+          + Create_Script
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

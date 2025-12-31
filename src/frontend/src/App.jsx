@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Activity } from 'lucide-react';
+import { Toaster, toast } from 'react-hot-toast';
+import { useKey } from 'react-use';
 
 import Login from './components/Login.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -33,6 +35,7 @@ export default function App() {
   const [editingFlux, setEditingFlux] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showPublicKeyModal, setShowPublicKeyModal] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -40,31 +43,35 @@ export default function App() {
   const logEndRef = useRef(null);
   const socketRef = useRef(null);
 
+  // --- Vim Motions & Keyboard Shortcuts ---
+  useKey('h', () => setView('home'), {}, [setView]);
+  useKey('m', () => setView('modules'), {}, [setView]);
+  useKey('s', () => setView('settings'), {}, [setView]);
+  useKey('d', () => setView('docs'), {}, [setView]);
+  useKey('?', () => setShowPublicKeyModal(true), {}, [setShowPublicKeyModal]);
+  useKey('Escape', () => { 
+    setEditingFlux(null); 
+    setEditingModule(null); 
+    setShowPublicKeyModal(false); 
+    setIsMobileSidebarOpen(false);
+  });
+
   // --- Socket Initialization ---
   useEffect(() => {
     if (!token) return;
-    
-    if (!socketRef.current) {
-      socketRef.current = io({ auth: { token } });
-    }
-    
+    if (!socketRef.current) socketRef.current = io({ auth: { token } });
     const s = socketRef.current;
     s.on('log', ({ appId, deploymentId, data }) => {
       setLogs(prev => ({ ...prev, [deploymentId]: (prev[deploymentId] || '') + data }));
       if (appId === activeFluxId) {
         setSelectedDeploymentId(deploymentId);
-        setDeployments(prev => {
-          if (prev.some(d => d.id === deploymentId)) return prev;
-          return [{ id: deploymentId, status: 'running', start_time: new Date().toISOString() }, ...prev];
-        });
+        setDeployments(prev => prev.some(d => d.id === deploymentId) ? prev : [ { id: deploymentId, status: 'running', start_time: new Date().toISOString() }, ...prev ]);
       }
     });
-
     s.on('status', ({ appId, deploymentId, status }) => { 
       if (appId === activeFluxId) fetchDeployments(activeFluxId); 
       fetchFluxStatuses();
     });
-
     return () => { s.off('log'); s.off('status'); };
   }, [activeFluxId, token]);
 
@@ -76,19 +83,8 @@ export default function App() {
   }, [token]);
 
   // --- Data Fetching ---
-  useEffect(() => {
-    if (token) {
-      fetchAllData();
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (activeFluxId && token) {
-      setSelectedDeploymentId(null);
-      fetchDeployments(activeFluxId);
-    }
-  }, [activeFluxId, token]);
-
+  useEffect(() => { if (token) fetchAllData(); }, [token]);
+  useEffect(() => { if (activeFluxId && token) { setSelectedDeploymentId(null); fetchDeployments(activeFluxId); } }, [activeFluxId, token]);
   useEffect(() => {
     if (view === 'console' && selectedDeploymentId && logs[selectedDeploymentId]) {
       logEndRef.current?.scrollIntoView({ behavior: 'auto' });
@@ -109,9 +105,7 @@ export default function App() {
       const data = Array.isArray(res.data) ? res.data : [];
       setFluxes(data);
       if (data.length > 0 && !activeFluxId) setActiveFluxId(data[0].id);
-    } catch (err) {
-      if (err.response?.status === 401) handleLogout();
-    }
+    } catch (err) { if (err.response?.status === 401) handleLogout(); }
   };
 
   const fetchFluxStatuses = async () => {
@@ -173,9 +167,8 @@ export default function App() {
       socketRef.current = io({ auth: { token: res.data.token } });
       setToken(res.data.token);
       setIsPasswordChangeRequired(res.data.changeRequired);
-    } catch (err) {
-      alert('Invalid credentials');
-    }
+      toast.success('System connection established');
+    } catch (err) { toast.error('Invalid credentials'); }
   };
 
   const handleLogout = () => {
@@ -183,6 +176,7 @@ export default function App() {
     socketRef.current = null;
     localStorage.removeItem('token');
     setToken(null);
+    toast.success('Session terminated');
   };
 
   // --- Flux Handlers ---
@@ -192,25 +186,19 @@ export default function App() {
       if (res.data.deploymentId) {
         setSelectedDeploymentId(res.data.deploymentId);
         fetchDeployments(activeFluxId);
+        toast.success('Flux execution initialized');
       }
-    } catch (err) {
-      alert('Failed to start pipeline');
-    }
+    } catch (err) { toast.error('Failed to start pipeline'); }
   };
 
   const saveFlux = async (e) => {
     e.preventDefault();
     try {
-      if (fluxes.find(f => f.id === editingFlux.id)) {
-        await api.fluxes.update(editingFlux.id, editingFlux);
-      } else {
-        await api.fluxes.create(editingFlux);
-      }
-      setEditingFlux(null);
-      fetchFluxes();
-    } catch (err) {
-      alert('Error saving flux');
-    }
+      if (fluxes.find(f => f.id === editingFlux.id)) await api.fluxes.update(editingFlux.id, editingFlux);
+      else await api.fluxes.create(editingFlux);
+      setEditingFlux(null); fetchFluxes();
+      toast.success('Flux configuration saved');
+    } catch (err) { toast.error('Error saving flux'); }
   };
 
   const deleteFlux = async (id) => {
@@ -219,23 +207,19 @@ export default function App() {
       await api.fluxes.delete(id);
       if (activeFluxId === id) setActiveFluxId(fluxes.find(f => f.id !== id)?.id || null);
       fetchFluxes();
-    } catch (err) {}
+      toast.success('Flux removed');
+    } catch (err) { toast.error('Failed to delete'); }
   };
 
   // --- Module Handlers ---
   const saveModule = async (e) => {
     e.preventDefault();
     try {
-      if (modules.find(m => m.id === editingModule.id)) {
-        await api.modules.update(editingModule.id, editingModule);
-      } else {
-        await api.modules.create(editingModule);
-      }
-      setEditingModule(null);
-      fetchModules();
-    } catch (err) {
-      alert('Error saving module');
-    }
+      if (modules.find(m => m.id === editingModule.id)) await api.modules.update(editingModule.id, editingModule);
+      else await api.modules.create(editingModule);
+      setEditingModule(null); fetchModules();
+      toast.success('Module logic updated');
+    } catch (err) { toast.error('Error saving module'); }
   };
 
   const deleteModule = async (id) => {
@@ -243,10 +227,10 @@ export default function App() {
     try {
       await api.modules.delete(id);
       fetchModules();
-    } catch (err) {}
+      toast.success('Module removed');
+    } catch (err) { toast.error('Failed to delete'); }
   };
 
-  // --- Helpers ---
   const checkPasswordChangeRequired = () => {
     if (isPasswordChangeRequired) return true;
     if (!token) return false;
@@ -257,17 +241,30 @@ export default function App() {
   };
 
   if (!token) return (
-    <Login 
-      username={username} setUsername={setUsername}
-      password={password} setPassword={setPassword}
-      onLogin={handleLogin}
-    />
+    <>
+      <Toaster position="top-right" />
+      <Login 
+        username={username} setUsername={setUsername}
+        password={password} setPassword={setPassword}
+        onLogin={handleLogin}
+      />
+    </>
   );
 
   const activeFluxConfig = fluxes.find(f => f.id === activeFluxId);
 
   return (
-    <div className="h-screen flex bg-zinc-950 text-zinc-300 font-mono selection:bg-blue-500 selection:text-white overflow-hidden">
+    <div className="h-screen flex bg-zinc-950 text-zinc-300 font-mono selection:bg-blue-500 selection:text-white overflow-hidden relative">
+      <Toaster position="top-right" toastOptions={{ style: { background: '#18181b', color: '#e4e4e7', border: '1px solid #27272a', fontFamily: '"JetBrains Mono", monospace', fontSize: '12px', borderRadius: '0px' }, success: { iconTheme: { primary: '#3b82f6', secondary: '#18181b' } } }} />
+      
+      {/* Mobile Menu Trigger */}
+      <button 
+        onClick={() => setIsMobileSidebarOpen(true)}
+        className="md:hidden fixed bottom-6 right-6 z-40 bg-blue-600 text-white p-4 rounded-full shadow-2xl active:scale-95 transition-transform"
+      >
+        <Activity size={24} />
+      </button>
+
       <Sidebar 
         fluxes={fluxes} activeFlux={activeFluxId} setActiveFlux={setActiveFluxId}
         view={view} setView={setView} onLogout={handleLogout}
@@ -276,6 +273,8 @@ export default function App() {
         isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed}
         fluxStatuses={fluxStatuses}
         onShowPublicKey={() => setShowPublicKeyModal(true)}
+        isMobileOpen={isMobileSidebarOpen}
+        setIsMobileOpen={setIsMobileSidebarOpen}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -316,13 +315,13 @@ export default function App() {
         )}
       </div>
 
-      <FluxModal 
-        flux={editingFlux} setFlux={setEditingFlux} 
-        onSave={saveFlux} onClose={() => setEditingFlux(null)}
-        isEdit={!!(editingFlux && fluxes.find(f => f.id === editingFlux.id))}
-        modules={modules}
-      />
-
+            <FluxModal 
+              flux={editingFlux} setFlux={setEditingFlux} 
+              onSave={saveFlux} onClose={() => setEditingFlux(null)}
+              isEdit={!!(editingFlux && fluxes.find(f => f.id === editingFlux.id))} 
+              modules={modules}
+              setView={setView}
+            />
       <ModuleModal 
         module={editingModule} setModule={setEditingModule}
         onSave={saveModule} onClose={() => setEditingModule(null)}
@@ -336,7 +335,7 @@ export default function App() {
 
       <ChangePasswordModal 
         isOpen={checkPasswordChangeRequired()}
-        token={token} setToken={(t) => { setToken(t); setIsPasswordChangeRequired(false); }}
+        token={token} setToken={(t) => { setToken(t); setIsPasswordChangeRequired(false); fetchAllData(); }}
       />
     </div>
   );
