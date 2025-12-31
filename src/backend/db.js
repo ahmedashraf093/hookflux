@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../');
 const dbPath = path.join(DATA_DIR, 'data.db');
@@ -42,6 +43,24 @@ function initSchema() {
       content TEXT NOT NULL,
       params TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT DEFAULT 'ADMIN',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      details TEXT,
+      ip_address TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
   `);
 
   // Migrations
@@ -53,6 +72,15 @@ function initSchema() {
     db.exec("ALTER TABLE apps ADD COLUMN ssh_host TEXT");
     db.exec("ALTER TABLE apps ADD COLUMN ssh_user TEXT");
   } catch (e) {}
+
+  // Create initial admin user if no users exist
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  if (userCount === 0) {
+    const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+    const hash = bcrypt.hashSync(adminPass, 10);
+    db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', hash, 'ADMIN');
+    console.log('[Security] Initial admin user created.');
+  }
 
   // Seed default templates
   const templateCount = db.prepare('SELECT COUNT(*) as count FROM templates').get().count;

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import axios from 'axios';
 import { Activity } from 'lucide-react';
 
 import Login from './components/Login.jsx';
@@ -13,9 +12,14 @@ import ModuleModal from './components/ModuleModal.jsx';
 import HomeDashboard from './components/HomeDashboard.jsx';
 import Documentation from './components/Documentation.jsx';
 import PublicKeyModal from './components/PublicKeyModal.jsx';
+import ChangePasswordModal from './components/ChangePasswordModal.jsx';
+import AuditLog from './components/AuditLog.jsx';
+
+import * as api from './lib/api';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [publicKey, setPublicKey] = useState('');
   const [fluxes, setFluxes] = useState([]);
@@ -23,198 +27,278 @@ export default function App() {
   const [modules, setModules] = useState([]);
   const [logs, setLogs] = useState({});
   const [deployments, setDeployments] = useState([]);
-  const [activeFlux, setActiveFlux] = useState(null);
+  const [activeFluxId, setActiveFluxId] = useState(null);
   const [selectedDeploymentId, setSelectedDeploymentId] = useState(null);
   const [view, setView] = useState('home');
   const [editingFlux, setEditingFlux] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showPublicKeyModal, setShowPublicKeyModal] = useState(false);
+  const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+
   const logEndRef = useRef(null);
   const socketRef = useRef(null);
 
+  // --- Socket Initialization ---
   useEffect(() => {
-    if (!socketRef.current) socketRef.current = io();
+    if (!token) return;
+    
+    if (!socketRef.current) {
+      socketRef.current = io({ auth: { token } });
+    }
+    
     const s = socketRef.current;
     s.on('log', ({ appId, deploymentId, data }) => {
       setLogs(prev => ({ ...prev, [deploymentId]: (prev[deploymentId] || '') + data }));
-      if (appId === activeFlux) {
+      if (appId === activeFluxId) {
         setSelectedDeploymentId(deploymentId);
-        setDeployments(prev => prev.some(d => d.id === deploymentId) ? prev : [ { id: deploymentId, status: 'running', start_time: new Date().toISOString() }, ...prev ]);
+        setDeployments(prev => {
+          if (prev.some(d => d.id === deploymentId)) return prev;
+          return [{ id: deploymentId, status: 'running', start_time: new Date().toISOString() }, ...prev];
+        });
       }
     });
+
     s.on('status', ({ appId, deploymentId, status }) => { 
-      if (appId === activeFlux) fetchDeployments(activeFlux); 
+      if (appId === activeFluxId) fetchDeployments(activeFluxId); 
       fetchFluxStatuses();
     });
+
     return () => { s.off('log'); s.off('status'); };
-  }, [activeFlux]);
+  }, [activeFluxId, token]);
 
-  useEffect(() => { if (token) { fetchFluxes(); fetchModules(); fetchPublicKey(); fetchFluxStatuses(); } }, [token]);
-  useEffect(() => { if (activeFlux && token) { setSelectedDeploymentId(null); fetchDeployments(activeFlux); } }, [activeFlux, token]);
-    useEffect(() => {
-      if (view === 'console' && selectedDeploymentId && logs[selectedDeploymentId]) {
-        logEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }
-    }, [logs[selectedDeploymentId], selectedDeploymentId, view]);
+  useEffect(() => {
+    if (!token && socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+  }, [token]);
 
-  const fetchPublicKey = async () => {
-    try {
-      const res = await axios.get('/api/system/public-key', { headers: { Authorization: `Bearer ${token}` } });
-      setPublicKey(res.data.publicKey);
-    } catch (err) {}
+  // --- Data Fetching ---
+  useEffect(() => {
+    if (token) {
+      fetchAllData();
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (activeFluxId && token) {
+      setSelectedDeploymentId(null);
+      fetchDeployments(activeFluxId);
+    }
+  }, [activeFluxId, token]);
+
+  useEffect(() => {
+    if (view === 'console' && selectedDeploymentId && logs[selectedDeploymentId]) {
+      logEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [logs[selectedDeploymentId], selectedDeploymentId, view]);
+
+  const fetchAllData = () => {
+    fetchFluxes();
+    fetchModules();
+    fetchPublicKey();
+    fetchFluxStatuses();
+    fetchAuditLogs();
   };
 
   const fetchFluxes = async () => {
     try {
-      const res = await axios.get('/api/fluxes', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await api.fluxes.getAll();
       const data = Array.isArray(res.data) ? res.data : [];
       setFluxes(data);
-      if (data.length > 0 && !activeFlux) setActiveFlux(data[0].id);
-    } catch (err) { 
-      console.error('Failed to fetch fluxes', err);
-      if (err.response?.status === 401) handleLogout(); 
-    } 
+      if (data.length > 0 && !activeFluxId) setActiveFluxId(data[0].id);
+    } catch (err) {
+      if (err.response?.status === 401) handleLogout();
+    }
   };
 
   const fetchFluxStatuses = async () => {
     try {
-      const res = await axios.get('/api/fluxes/statuses', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await api.fluxes.getStatuses();
       setFluxStatuses(res.data);
-    } catch (err) {
-      console.error('Failed to fetch flux statuses', err);
-    }
+    } catch (err) {}
   };
 
   const fetchModules = async () => {
     try {
-      const res = await axios.get('/api/modules', { headers: { Authorization: `Bearer ${token}` } });
-      const parsedModules = res.data.map(m => ({
+      const res = await api.modules.getAll();
+      const parsed = res.data.map(m => ({
         ...m,
         params: Array.isArray(m.params) ? m.params : JSON.parse(m.params || '[]')
       }));
-      setModules(parsedModules);
-    } catch (err) {
-      console.error('Failed to fetch modules', err);
-    }
+      setModules(parsed);
+    } catch (err) {}
   };
 
-  const fetchDeployments = async (fluxId) => {
-    if (!fluxId) return;
+  const fetchDeployments = async (id) => {
+    if (!id) return;
     try {
-      const res = await axios.get(`/api/fluxes/${fluxId}/deployments`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = Array.isArray(res.data) ? res.data : [];
-      setDeployments(data);
-      if (data.length > 0 && !selectedDeploymentId) {
-        handleSelectDeployment(data[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to fetch deployments', err);
-    }
+      const res = await api.fluxes.getDeployments(id);
+      setDeployments(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {}
+  };
+
+  const fetchPublicKey = async () => {
+    try {
+      const res = await api.system.getPublicKey();
+      setPublicKey(res.data.publicKey);
+    } catch (err) {}
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      const res = await api.system.getAuditLogs();
+      setAuditLogs(res.data);
+    } catch (err) {}
   };
 
   const handleSelectDeployment = async (deploymentId) => {
     setSelectedDeploymentId(deploymentId);
     if (!logs[deploymentId]) {
       try {
-        const res = await axios.get(`/api/deployments/${deploymentId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await api.deployments.getLogs(deploymentId);
         setLogs(prev => ({ ...prev, [deploymentId]: res.data.logs }));
       } catch (err) {}
     }
   };
 
+  // --- Auth Handlers ---
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('/api/login', { password });
+      const res = await api.auth.login(username, password);
       localStorage.setItem('token', res.data.token);
+      socketRef.current = io({ auth: { token: res.data.token } });
       setToken(res.data.token);
-    } catch (err) { alert('Invalid credentials'); }
+      setIsPasswordChangeRequired(res.data.changeRequired);
+    } catch (err) {
+      alert('Invalid credentials');
+    }
   };
 
-  const handleLogout = () => { localStorage.removeItem('token'); setToken(null); };
+  const handleLogout = () => {
+    if (socketRef.current) socketRef.current.disconnect();
+    socketRef.current = null;
+    localStorage.removeItem('token');
+    setToken(null);
+  };
 
+  // --- Flux Handlers ---
   const triggerDeploy = async (id) => {
     try {
-      const res = await axios.post(`/api/fluxes/${id}/deploy`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.data.deploymentId) { setSelectedDeploymentId(res.data.deploymentId); fetchDeployments(activeFlux); }
-    } catch (err) { alert('Flux execution failed to start'); }
+      const res = await api.fluxes.deploy(id);
+      if (res.data.deploymentId) {
+        setSelectedDeploymentId(res.data.deploymentId);
+        fetchDeployments(activeFluxId);
+      }
+    } catch (err) {
+      alert('Failed to start pipeline');
+    }
   };
 
   const saveFlux = async (e) => {
     e.preventDefault();
     try {
-      if (fluxes.find(f => f.id === editingFlux.id)) await axios.put(`/api/fluxes/${editingFlux.id}`, editingFlux, { headers: { Authorization: `Bearer ${token}` } });
-      else await axios.post('/api/fluxes', editingFlux, { headers: { Authorization: `Bearer ${token}` } });
-      setEditingFlux(null); fetchFluxes();
-    } catch (err) { alert('Failed to commit flux changes'); }
+      if (fluxes.find(f => f.id === editingFlux.id)) {
+        await api.fluxes.update(editingFlux.id, editingFlux);
+      } else {
+        await api.fluxes.create(editingFlux);
+      }
+      setEditingFlux(null);
+      fetchFluxes();
+    } catch (err) {
+      alert('Error saving flux');
+    }
   };
 
   const deleteFlux = async (id) => {
-    if (!confirm('Are you sure you want to delete this flux?')) return;
-    try { await axios.delete(`/api/fluxes/${id}`, { headers: { Authorization: `Bearer ${token}` } }); if (activeFlux === id) setActiveFlux(fluxes.find(f => f.id !== id)?.id || null); fetchFluxes(); } catch (err) {}
+    if (!confirm('Delete this flux?')) return;
+    try {
+      await api.fluxes.delete(id);
+      if (activeFluxId === id) setActiveFluxId(fluxes.find(f => f.id !== id)?.id || null);
+      fetchFluxes();
+    } catch (err) {}
   };
 
+  // --- Module Handlers ---
   const saveModule = async (e) => {
     e.preventDefault();
     try {
-      if (modules.find(m => m.id === editingModule.id)) await axios.put(`/api/modules/${editingModule.id}`, editingModule, { headers: { Authorization: `Bearer ${token}` } });
-      else await axios.post('/api/modules', editingModule, { headers: { Authorization: `Bearer ${token}` } });
-      setEditingModule(null); fetchModules();
-    } catch (err) { alert('Failed to commit module changes'); }
+      if (modules.find(m => m.id === editingModule.id)) {
+        await api.modules.update(editingModule.id, editingModule);
+      } else {
+        await api.modules.create(editingModule);
+      }
+      setEditingModule(null);
+      fetchModules();
+    } catch (err) {
+      alert('Error saving module');
+    }
   };
 
   const deleteModule = async (id) => {
-    if (!confirm('Are you sure you want to delete this module?')) return;
-    try { await axios.delete(`/api/modules/${id}`, { headers: { Authorization: `Bearer ${token}` } }); fetchModules(); } catch (err) {}
+    if (!confirm('Delete this module?')) return;
+    try {
+      await api.modules.delete(id);
+      fetchModules();
+    } catch (err) {}
   };
 
-  if (!token) return <Login password={password} setPassword={setPassword} onLogin={handleLogin} />;
+  // --- Helpers ---
+  const checkPasswordChangeRequired = () => {
+    if (isPasswordChangeRequired) return true;
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return !!payload.changeRequired;
+    } catch (e) { return false; }
+  };
 
-  const activeFluxConfig = fluxes.find(f => f.id === activeFlux);
+  if (!token) return (
+    <Login 
+      username={username} setUsername={setUsername}
+      password={password} setPassword={setPassword}
+      onLogin={handleLogin}
+    />
+  );
+
+  const activeFluxConfig = fluxes.find(f => f.id === activeFluxId);
 
   return (
     <div className="h-screen flex bg-zinc-950 text-zinc-300 font-mono selection:bg-blue-500 selection:text-white overflow-hidden">
       <Sidebar 
-        fluxes={fluxes} 
-        activeFlux={activeFlux} 
-        setActiveFlux={setActiveFlux} 
-        view={view} 
-        setView={setView} 
-        onLogout={handleLogout} 
+        fluxes={fluxes} activeFlux={activeFluxId} setActiveFlux={setActiveFluxId}
+        view={view} setView={setView} onLogout={handleLogout}
         publicKey={publicKey}
         onNewFlux={() => { setEditingFlux({ id: '', name: '', repo: '', branch: 'main', cwd: '.', flow_config: '[]', ssh_host: '', ssh_user: '' }); setView('settings'); }}
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
+        isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed}
         fluxStatuses={fluxStatuses}
         onShowPublicKey={() => setShowPublicKeyModal(true)}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         {view === 'home' ? (
           <HomeDashboard 
-            fluxes={fluxes} 
-            modules={modules} 
-            deployments={deployments} 
-            setView={setView}
-            setActiveFlux={setActiveFlux}
+            fluxes={fluxes} modules={modules} deployments={deployments} 
+            setView={setView} setActiveFlux={setActiveFluxId}
           />
         ) : view === 'docs' ? (
           <Documentation />
         ) : view === 'modules' ? (
           <ModuleManager 
-            modules={modules} 
-            onEdit={setEditingModule} 
-            onDelete={deleteModule} 
-            onNew={() => setEditingModule({ id: '', name: '', content: '#!/bin/bash\nset -e\n', params: [] }) } 
+            modules={modules} onEdit={setEditingModule} onDelete={deleteModule}
+            onNew={() => setEditingModule({ id: '', name: '', content: '#!/bin/bash\nset -e\n', params: [] })}
           />
         ) : view === 'settings' ? (
-          <FluxManager 
-            fluxes={fluxes} 
-            onEdit={setEditingFlux} 
-            onDelete={deleteFlux} 
-          />
-        ) : activeFlux ? (
+          <div className="flex-1 overflow-y-auto">
+            <FluxManager fluxes={fluxes} onEdit={setEditingFlux} onDelete={deleteFlux} />
+            <div className="max-w-6xl mx-auto px-12 pb-20">
+              <AuditLog logs={auditLogs} />
+            </div>
+          </div>
+        ) : activeFluxId ? (
           <Console 
             flux={activeFluxConfig}
             deployments={deployments}
@@ -226,38 +310,33 @@ export default function App() {
           />
         ) : (
           <div className="flex-1 flex items-center justify-center text-zinc-800 flex-col gap-10 bg-[radial-gradient(circle,#18181b_1px,transparent_1px)] bg-[size:30px_30px]">
-            <div className="border-2 border-zinc-900 p-12 rounded-full animate-pulse">
-              <Activity size={64} className="opacity-20" />
-            </div>
-            <div className="text-center space-y-3">
-              <div className="text-sm font-black uppercase tracking-[0.5em] opacity-30">System_Idle</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest opacity-10">Awaiting_Signal_</div>
-            </div>
+            <Activity size={64} className="opacity-20 animate-pulse" />
+            <div className="text-center uppercase tracking-widest text-[10px] font-bold opacity-30">Awaiting_Signal_</div>
           </div>
         )}
       </div>
 
       <FluxModal 
-        flux={editingFlux} 
-        setFlux={setEditingFlux} 
-        onSave={saveFlux} 
-        onClose={() => setEditingFlux(null)} 
-        isEdit={!!(editingFlux && fluxes.find(f => f.id === editingFlux.id))} 
-        modules={modules} 
+        flux={editingFlux} setFlux={setEditingFlux} 
+        onSave={saveFlux} onClose={() => setEditingFlux(null)}
+        isEdit={!!(editingFlux && fluxes.find(f => f.id === editingFlux.id))}
+        modules={modules}
       />
 
       <ModuleModal 
-        module={editingModule} 
-        setModule={setEditingModule} 
-        onSave={saveModule} 
-        onClose={() => setEditingModule(null)} 
-        isEdit={!!(editingModule && modules.find(m => m.id === editingModule.id))} 
+        module={editingModule} setModule={setEditingModule}
+        onSave={saveModule} onClose={() => setEditingModule(null)}
+        isEdit={!!(editingModule && modules.find(m => m.id === editingModule.id))}
       />
 
       <PublicKeyModal 
-        isOpen={showPublicKeyModal}
-        onClose={() => setShowPublicKeyModal(false)}
+        isOpen={showPublicKeyModal} onClose={() => setShowPublicKeyModal(false)}
         publicKey={publicKey}
+      />
+
+      <ChangePasswordModal 
+        isOpen={checkPasswordChangeRequired()}
+        token={token} setToken={(t) => { setToken(t); setIsPasswordChangeRequired(false); }}
       />
     </div>
   );

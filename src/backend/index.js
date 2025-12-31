@@ -1,20 +1,59 @@
-require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const bodyParser = require('body-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
 const { initSchema, db } = require('./db');
-const { login, authMiddleware } = require('./auth');
+const { login, authMiddleware, changePassword } = require('./auth');
 const { startMaintenanceTask } = require('./maintenance');
 const { getPublicKey } = require('./ssh');
+const { getRecentLogs } = require('./audit');
+
+const DOMAIN = process.env.DOMAIN || 'localhost';
 
 // Initialize App
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { 
+  cors: { 
+    origin: process.env.NODE_ENV === 'production' && process.env.DOMAIN
+      ? [new RegExp(`^https?://.*\\.${process.env.DOMAIN.replace('.', '\\.')}$`), `https://${process.env.DOMAIN}`]
+      : "*" 
+  } 
+});// 1. Security Headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "https://cdn.tailwindcss.com"], // Allow Tailwind CDN
+      "img-src": ["'self'", "data:", "https://*"],
+    },
+  },
+}));
+
+// 2. Global Rate Limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', globalLimiter);
+
+// 3. Strict Auth Rate Limiting (Brute force protection)
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Limit each IP to 10 failed login attempts per hour
+  message: { error: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true
+});
+app.use('/api/login', authLimiter);
 
 const PORT = process.env.PORT || 3000;
 const UI_DIST = path.join(__dirname, '../frontend/dist');
@@ -37,13 +76,20 @@ const moduleRoutes = require('./routes/modules');
 const webhookRoutes = require('./routes/webhooks')(io);
 
 app.post('/api/login', login);
+app.use('/api', authMiddleware);
+
+app.post('/api/auth/change-password', changePassword);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-app.get('/api/system/public-key', authMiddleware, (req, res) => {
+app.get('/api/system/public-key', (req, res) => {
   const key = getPublicKey();
   key ? res.json({ publicKey: key }) : res.status(500).send('Failed to generate key');
 });
-app.use('/api/fluxes', authMiddleware, fluxRoutes);
-app.use('/api/modules', authMiddleware, moduleRoutes);
+
+app.get('/api/system/audit', (req, res) => {
+  res.json(getRecentLogs(50));
+});
+app.use('/api/fluxes', fluxRoutes);
+app.use('/api/modules', moduleRoutes);
 app.use('/webhook', webhookRoutes);
 
 // Deployment Log Retrieval
