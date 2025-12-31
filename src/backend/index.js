@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
+const Database = require('better-sqlite3');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,8 +17,21 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const APPS_FILE = path.join(__dirname, '../../apps.json');
 const LOGS_DIR = path.join(__dirname, '../../logs');
+const db = new Database('data.db');
+
+// Initialize SQLite Schema
+db.exec(`
+  CREATE TABLE IF NOT EXISTS apps (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    repo TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    script TEXT NOT NULL,
+    cwd TEXT NOT NULL,
+    webhook_secret TEXT
+  )
+`);
 
 app.use(bodyParser.json({
   verify: (req, res, buf) => {
@@ -25,17 +39,35 @@ app.use(bodyParser.json({
   }
 }));
 
-// Helper to load apps
-function getApps() {
-  return JSON.parse(fs.readFileSync(APPS_FILE, 'utf8'));
+// Migration: Load from apps.json if DB is empty and file exists
+const APPS_FILE = path.join(__dirname, '../../apps.json');
+if (fs.existsSync(APPS_FILE)) {
+  const count = db.prepare('SELECT COUNT(*) as count FROM apps').get().count;
+  if (count === 0) {
+    try {
+      const apps = JSON.parse(fs.readFileSync(APPS_FILE, 'utf8'));
+      const insert = db.prepare('INSERT INTO apps (id, name, repo, branch, script, cwd, webhook_secret) VALUES (?, ?, ?, ?, ?, ?, ?)');
+      apps.forEach(app => {
+        insert.run(app.id, app.name, app.repo, app.branch, app.script, app.cwd, process.env.WEBHOOK_SECRET || '');
+      });
+      console.log('Migrated apps.json to SQLite');
+    } catch (err) {
+      console.error('Migration failed:', err.message);
+    }
+  }
 }
 
-// Verify GitHub Signature
-function verifySignature(req) {
+// Helper to load apps
+function getApps() {
+  return db.prepare('SELECT * FROM apps').all();
+}
+
+// Verify GitHub Signature for a specific app
+function verifySignature(req, secret) {
   const signature = req.headers['x-hub-signature-256'];
-  if (!signature) return false;
+  if (!signature || !secret) return false;
   
-  const hmac = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET);
+  const hmac = crypto.createHmac('sha256', secret);
   const digest = 'sha256=' + hmac.update(req.rawBody).digest('hex');
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 }
@@ -46,7 +78,8 @@ function runDeploy(appConfig, socket = null) {
   const logFile = path.join(LOGS_DIR, `${appConfig.id}-${timestamp}.log`);
   const logStream = fs.createWriteStream(logFile);
 
-  const msg = `Starting deployment for ${appConfig.name}...\n`;
+  const msg = `Starting deployment for ${appConfig.name}...
+`;
   logStream.write(msg);
   if (socket) socket.emit('log', { appId: appConfig.id, data: msg });
 
@@ -68,7 +101,9 @@ function runDeploy(appConfig, socket = null) {
   });
 
   child.on('close', (code) => {
-    const endMsg = `\nDeployment finished with code ${code}\n`;
+    const endMsg = `
+Deployment finished with code ${code}
+`;
     logStream.write(endMsg);
     logStream.end();
     io.emit('status', { appId: appConfig.id, status: code === 0 ? 'success' : 'failed' });
@@ -77,23 +112,25 @@ function runDeploy(appConfig, socket = null) {
 
 // Webhook Endpoint
 app.post('/webhook', (req, res) => {
-  if (!verifySignature(req)) {
-    return res.status(401).send('Invalid signature');
-  }
-
   const { repository, ref } = req.body;
+  if (!repository || !ref) return res.status(400).send('Invalid payload');
+
   const repoFullName = repository.full_name;
   const branch = ref.replace('refs/heads/', '');
 
-  const apps = getApps();
-  const targetApp = apps.find(a => a.repo === repoFullName && a.branch === branch);
+  // Find app first to get its specific secret
+  const targetApp = db.prepare('SELECT * FROM apps WHERE repo = ? AND branch = ?').get(repoFullName, branch);
 
-  if (targetApp) {
-    runDeploy(targetApp);
-    res.status(202).send('Deployment started');
-  } else {
-    res.status(404).send('No matching app found');
+  if (!targetApp) {
+    return res.status(404).send('No matching app found');
   }
+
+  if (!verifySignature(req, targetApp.webhook_secret)) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  runDeploy(targetApp);
+  res.status(202).send('Deployment started');
 });
 
 // Simple Auth
@@ -122,9 +159,35 @@ app.get('/api/apps', auth, (req, res) => {
   res.json(getApps());
 });
 
+app.post('/api/apps', auth, (req, res) => {
+  const { id, name, repo, branch, script, cwd, webhook_secret } = req.body;
+  try {
+    db.prepare('INSERT INTO apps (id, name, repo, branch, script, cwd, webhook_secret) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id, name, repo, branch, script, cwd, webhook_secret);
+    res.status(201).json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/apps/:id', auth, (req, res) => {
+  const { name, repo, branch, script, cwd, webhook_secret } = req.body;
+  try {
+    db.prepare('UPDATE apps SET name = ?, repo = ?, branch = ?, script = ?, cwd = ?, webhook_secret = ? WHERE id = ?')
+      .run(name, repo, branch, script, cwd, webhook_secret, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/apps/:id', auth, (req, res) => {
+  db.prepare('DELETE FROM apps WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 app.post('/api/deploy/:id', auth, (req, res) => {
-  const apps = getApps();
-  const targetApp = apps.find(a => a.id === req.params.id);
+  const targetApp = db.prepare('SELECT * FROM apps WHERE id = ?').get(req.params.id);
   if (targetApp) {
     runDeploy(targetApp);
     res.status(202).send('Deployment triggered');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
-import { Play, Shield, Terminal, Activity, Lock, LogOut } from 'lucide-react';
+import { Play, Shield, Terminal, Activity, Lock, LogOut, Settings, Plus, Trash2, Save, X } from 'lucide-react';
 
 const socket = io();
 
@@ -11,6 +11,8 @@ export default function App() {
   const [apps, setApps] = useState([]);
   const [logs, setLogs] = useState({});
   const [activeApp, setActiveApp] = useState(null);
+  const [view, setView] = useState('console'); // 'console' or 'settings'
+  const [editingApp, setEditingApp] = useState(null);
   const logEndRef = useRef(null);
 
   useEffect(() => {
@@ -31,8 +33,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs, activeApp]);
+    if (view === 'console') {
+      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, activeApp, view]);
 
   const fetchApps = async () => {
     try {
@@ -73,10 +77,42 @@ export default function App() {
     }
   };
 
+  const saveApp = async (e) => {
+    e.preventDefault();
+    try {
+      if (apps.find(a => a.id === editingApp.id)) {
+        await axios.put(`/api/apps/${editingApp.id}`, editingApp, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post('/api/apps', editingApp, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      setEditingApp(null);
+      fetchApps();
+    } catch (err) {
+      alert('Failed to save app: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const deleteApp = async (id) => {
+    if (!confirm('Are you sure you want to delete this app?')) return;
+    try {
+      await axios.delete(`/api/apps/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (activeApp === id) setActiveApp(apps.find(a => a.id !== id)?.id || null);
+      fetchApps();
+    } catch (err) {
+      alert('Failed to delete app');
+    }
+  };
+
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-xl border border-slate-800 shadow-2xl w-96">
+        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-xl border border-slate-800 shadow-2xl w-96 text-white">
           <div className="flex justify-center mb-6">
             <div className="bg-blue-600 p-3 rounded-lg">
               <Shield size={32} />
@@ -115,16 +151,28 @@ export default function App() {
           {apps.map(app => (
             <button
               key={app.id}
-              onClick={() => setActiveApp(app.id)}
+              onClick={() => { setActiveApp(app.id); setView('console'); }}
               className={`w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-colors ${
-                activeApp === app.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'
+                activeApp === app.id && view === 'console' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'
               }`}
             >
               <span className="truncate">{app.name}</span>
             </button>
           ))}
+          <button
+            onClick={() => { setEditingApp({ id: '', name: '', repo: '', branch: 'main', script: '', cwd: '.', webhook_secret: '' }); setView('settings'); }}
+            className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            <Plus size={18} /> New App
+          </button>
         </div>
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 space-y-2">
+          <button 
+            onClick={() => setView('settings')}
+            className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${view === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            <Settings size={18} /> Settings
+          </button>
           <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-colors">
             <LogOut size={18} /> Logout
           </button>
@@ -133,7 +181,119 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {activeApp ? (
+        {view === 'settings' ? (
+          <div className="p-8 max-w-4xl mx-auto w-full">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Settings className="text-blue-500" /> Application Settings
+            </h2>
+            <div className="grid gap-4">
+              {apps.map(app => (
+                <div key={app.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg">{app.name}</h3>
+                    <p className="text-sm text-slate-400 font-mono">{app.repo} [{app.branch}]</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingApp(app)} className="p-2 hover:bg-slate-800 rounded-lg text-blue-400"><Settings size={20} /></button>
+                    <button onClick={() => deleteApp(app.id)} className="p-2 hover:bg-slate-800 rounded-lg text-red-400"><Trash2 size={20} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {editingApp && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <form onSubmit={saveApp} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold">{editingApp.id ? 'Edit' : 'New'} Application</h3>
+                    <button type="button" onClick={() => setEditingApp(null)} className="text-slate-400 hover:text-white"><X /></button>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">App ID (Slug)</label>
+                        <input
+                          disabled={!!apps.find(a => a.id === editingApp.id)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={editingApp.id}
+                          onChange={e => setEditingApp({...editingApp, id: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Display Name</label>
+                        <input
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={editingApp.name}
+                          onChange={e => setEditingApp({...editingApp, name: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">GitHub Repo (user/repo)</label>
+                      <input
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                        value={editingApp.repo}
+                        onChange={e => setEditingApp({...editingApp, repo: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Branch</label>
+                        <input
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={editingApp.branch}
+                          onChange={e => setEditingApp({...editingApp, branch: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Webhook Secret</label>
+                        <input
+                          type="password"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={editingApp.webhook_secret}
+                          onChange={e => setEditingApp({...editingApp, webhook_secret: e.target.value})}
+                          placeholder="Shared with GitHub"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Deploy Script Path</label>
+                      <input
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        value={editingApp.script}
+                        onChange={e => setEditingApp({...editingApp, script: e.target.value})}
+                        placeholder="./scripts/deploy.sh"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Working Directory (CWD)</label>
+                      <input
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        value={editingApp.cwd}
+                        onChange={e => setEditingApp({...editingApp, cwd: e.target.value})}
+                        placeholder="."
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-8 flex gap-3">
+                    <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors">
+                      <Save size={18} /> Save Application
+                    </button>
+                    <button type="button" onClick={() => setEditingApp(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 py-2 rounded-lg font-bold transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        ) : activeApp ? (
           <>
             <div className="p-6 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
               <div>
@@ -159,8 +319,9 @@ export default function App() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-500">
-            Select an application to view details
+          <div className="flex-1 flex items-center justify-center text-slate-500 flex-col gap-4">
+            <Activity size={48} className="opacity-20" />
+            <p>Select an application to view details or create a new one in settings.</p>
           </div>
         )}
       </div>
