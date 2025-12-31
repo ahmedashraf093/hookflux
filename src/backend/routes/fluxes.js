@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../db');
 const { runDeploy } = require('../deployer');
+const { logAction } = require('../audit');
 
 module.exports = (io) => {
   router.get('/', (req, res) => {
@@ -28,6 +29,8 @@ module.exports = (io) => {
     try {
       db.prepare('INSERT INTO apps (id, name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config, ssh_host, ssh_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(id, name, repo, branch, script, cwd, webhook_secret, strategy || 'script', template_id || null, template_params || '{}', flow_config || '[]', ssh_host || null, ssh_user || null);
+      
+      logAction(req.user.userId, 'CREATE_FLUX', { id, name }, req.ip);
       res.status(201).json({ success: true });
     } catch (err) {
       res.status(400).json({ error: err.message });
@@ -39,6 +42,8 @@ module.exports = (io) => {
     try {
       db.prepare('UPDATE apps SET name = ?, repo = ?, branch = ?, script = ?, cwd = ?, webhook_secret = ?, strategy = ?, template_id = ?, template_params = ?, flow_config = ?, ssh_host = ?, ssh_user = ? WHERE id = ?')
         .run(name, repo, branch, script, cwd, webhook_secret, strategy || 'script', template_id || null, template_params || '{}', flow_config || '[]', ssh_host || null, ssh_user || null, req.params.id);
+      
+      logAction(req.user.userId, 'UPDATE_FLUX', { id: req.params.id, name }, req.ip);
       res.json({ success: true });
     } catch (err) {
       res.status(400).json({ error: err.message });
@@ -47,6 +52,7 @@ module.exports = (io) => {
 
   router.delete('/:id', (req, res) => {
     db.prepare('DELETE FROM apps WHERE id = ?').run(req.params.id);
+    logAction(req.user.userId, 'DELETE_FLUX', { id: req.params.id }, req.ip);
     res.json({ success: true });
   });
 
@@ -59,6 +65,7 @@ module.exports = (io) => {
   router.post('/:id/deploy', (req, res) => {
     const targetApp = db.prepare('SELECT * FROM apps WHERE id = ?').get(req.params.id);
     if (targetApp) {
+      logAction(req.user.userId, 'TRIGGER_DEPLOY', { id: req.params.id, manual: true }, req.ip);
       const deploymentId = runDeploy(targetApp, io);
       res.status(202).json({ success: true, deploymentId });
     } else {

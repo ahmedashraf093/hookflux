@@ -1,9 +1,14 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { db } = require('./db');
+const { logAction } = require('./audit');
+
+// Helper to get JWT_SECRET with fallback
+const getSecret = () => process.env.JWT_SECRET || 'fallback-secret-use-env-variable-in-production';
 
 function login(req, res) {
   const { username, password } = req.body;
+  const secret = getSecret();
   
   try {
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username || 'admin');
@@ -16,11 +21,13 @@ function login(req, res) {
         username: user.username, 
         role: user.role,
         changeRequired: isDefault
-      }, process.env.JWT_SECRET, { expiresIn: '1d' });
+      }, secret, { expiresIn: '1d' });
       
+      logAction(user.id, 'LOGIN_SUCCESS', { username: user.username }, req.ip);
       return res.json({ token, changeRequired: isDefault });
     }
     
+    logAction(null, 'LOGIN_FAILURE', { attemptedUsername: username }, req.ip);
     res.status(401).json({ error: 'Invalid credentials' });
   } catch (err) {
     console.error('Login error:', err);
@@ -39,7 +46,8 @@ function authMiddleware(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const secret = getSecret();
+    const decoded = jwt.verify(token, secret);
     
     // Check if user still exists in DB
     const user = db.prepare('SELECT id FROM users WHERE id = ?').get(decoded.userId);
@@ -56,12 +64,13 @@ function authMiddleware(req, res, next) {
 
 function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
+  const secret = getSecret();
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).send('Unauthorized');
   
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, secret);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.userId);
     
     if (!user || !bcrypt.compareSync(currentPassword, user.password)) {
@@ -71,13 +80,15 @@ function changePassword(req, res) {
     const newHash = bcrypt.hashSync(newPassword, 10);
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(newHash, user.id);
     
+    logAction(user.id, 'PASSWORD_CHANGE', { username: user.username }, req.ip);
+    
     // Return a new token without the changeRequired flag
     const newToken = jwt.sign({ 
       userId: user.id, 
       username: user.username, 
       role: user.role,
       changeRequired: false
-    }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    }, secret, { expiresIn: '1d' });
     
     res.json({ token: newToken });
   } catch (err) {
