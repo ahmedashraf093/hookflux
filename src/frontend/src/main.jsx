@@ -2,8 +2,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+console.log('Main.jsx is loading...');
+const root = document.getElementById('root');
+console.log('Root element:', root);
+
+if (root) {
+  ReactDOM.createRoot(root).render(<App />);
+  console.log('App should be rendered now');
+} else {
+  console.error('Root element not found!');
+}

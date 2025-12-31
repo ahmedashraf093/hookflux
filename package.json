@@ -7,7 +7,8 @@
     "server": "node src/backend/index.js",
     "ui": "vite",
     "dev": "npm run server & npm run ui",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "vite build",
+    "start": "NODE_ENV=production node src/backend/index.js"
   },
   "keywords": [],
   "author": "",
@@ -29,5 +30,9 @@
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "vite": "^7.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.3"
   }
 }
