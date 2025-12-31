@@ -1,0 +1,107 @@
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const { db } = require('./db');
+
+const LOGS_DIR = path.join(__dirname, '../../logs');
+
+function runDeploy(appConfig, io) {
+  try {
+    const deployment = db.prepare('INSERT INTO deployments (app_id, status) VALUES (?, ?)').run(appConfig.id, 'running');
+    const deploymentId = deployment.lastInsertRowid;
+    let fullLogs = '';
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
+    const logFile = path.join(LOGS_DIR, `${appConfig.id}-${timestamp}.log`);
+    const logStream = fs.createWriteStream(logFile);
+
+    const emitLog = (data, type = 'info') => {
+      fullLogs += data;
+      logStream.write(data);
+      io.emit('log', { appId: appConfig.id, deploymentId, data, type });
+    };
+
+    emitLog(`Initializing pipeline for ${appConfig.name} (ID: ${deploymentId})...
+`);
+
+    const flowSteps = JSON.parse(appConfig.flow_config || '[]');
+    if (flowSteps.length === 0) {
+      throw new Error("No deployment steps defined in flow configuration.");
+    }
+
+    let fullFlowScript = '#!/bin/bash\nset -e\n';
+    
+    for (const [index, step] of flowSteps.entries()) {
+      const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(step.template_id);
+      if (!template) throw new Error(`Template ${step.template_id} not found for step ${index + 1}`);
+      
+      let stepContent = template.content;
+      const allParams = {
+        ...step.params,
+        REPO_URL: `git@github.com:${appConfig.repo}.git`,
+        BRANCH: appConfig.branch,
+        APP_ID: appConfig.id
+      };
+
+      Object.keys(allParams).forEach(key => {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        stepContent = stepContent.replace(regex, allParams[key]);
+      });
+
+      fullFlowScript += `\n# --- STEP ${index + 1}: ${template.name} ---\n`;
+      fullFlowScript += stepContent + '\n';
+    }
+
+    const tempScriptDir = path.join(__dirname, '../../temp_scripts');
+    if (!fs.existsSync(tempScriptDir)) fs.mkdirSync(tempScriptDir, { recursive: true });
+    const finalScriptPath = path.join(tempScriptDir, `${appConfig.id}-${deploymentId}.sh`);
+    fs.writeFileSync(finalScriptPath, fullFlowScript, { mode: 0o755 });
+    
+    emitLog(`Generated pipeline script with ${flowSteps.length} steps.\n`);
+
+    const child = spawn('bash', [finalScriptPath], {
+      cwd: appConfig.cwd.startsWith('~') 
+        ? appConfig.cwd.replace('~', process.env.HOME || process.env.USERPROFILE)
+        : appConfig.cwd,
+      env: { ...process.env, APP_ID: appConfig.id, DEPLOYMENT_ID: deploymentId }
+    });
+
+    child.on('error', (err) => {
+      const errMsg = `\nFailed to start pipeline: ${err.message}\n`;
+      emitLog(errMsg, 'error');
+      db.prepare('UPDATE deployments SET status = ?, logs = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?')
+        .run('failed', fullLogs, deploymentId);
+      io.emit('status', { appId: appConfig.id, deploymentId, status: 'failed' });
+    });
+
+    child.stdout.on('data', (data) => emitLog(data.toString()));
+    child.stderr.on('data', (data) => emitLog(`ERROR: ${data.toString()}`, 'error'));
+
+    child.on('close', (code) => {
+      const status = code === 0 ? 'success' : 'failed';
+      emitLog(`\nPipeline finished with code ${code}\n`);
+      logStream.end();
+
+      // Cap DB log size to 500KB to prevent DB ballooning
+      const MAX_DB_LOG_SIZE = 500 * 1024;
+      const dbLogs = fullLogs.length > MAX_DB_LOG_SIZE 
+        ? "...[Truncated, view full file for details]...\n" + fullLogs.slice(-MAX_DB_LOG_SIZE)
+        : fullLogs;
+
+      db.prepare('UPDATE deployments SET status = ?, logs = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(status, dbLogs, deploymentId);
+
+      io.emit('status', { appId: appConfig.id, deploymentId, status });
+      
+      if (fs.existsSync(finalScriptPath)) fs.unlinkSync(finalScriptPath);
+    });
+
+    return deploymentId;
+  } catch (err) {
+    console.error('Failed to run deployment:', err);
+    io.emit('error', { message: 'Failed to start deployment: ' + err.message });
+  }
+}
+
+module.exports = { runDeploy };
