@@ -9,9 +9,13 @@ services:
       - traefik-public
     environment:
       - PORT=3000
+      - DATA_DIR=/app/data
+      - LOGS_DIR=/app/logs
+      - SSH_DIR=/root/.ssh
     volumes:
-      - ./data.db:/app/data.db
-      - ./logs:/app/logs
+      - hookflux_data:/app/data
+      - hookflux_logs:/app/logs
+      - hookflux_ssh:/root/.ssh
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       mode: replicated
@@ -22,7 +26,7 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.swarm.network=traefik-public"
-        - "traefik.http.routers.hookflux.rule=Host(`webhooks.$DOMAIN`)"
+        - "traefik.http.routers.hookflux.rule=Host(`webhook.cds-connect.online`)"
         - "traefik.http.routers.hookflux.entrypoints=https"
         - "traefik.http.routers.hookflux.tls=true"
         - "traefik.http.routers.hookflux.tls.certresolver=le"
@@ -36,3 +40,8 @@ services:
 networks:
   traefik-public:
     external: true
+
+volumes:
+  hookflux_data:
+  hookflux_logs:
+  hookflux_ssh:

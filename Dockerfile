@@ -21,8 +21,8 @@ COPY src/backend ./src/backend
 COPY --from=build-stage /app/src/frontend/dist ./src/frontend/dist
 COPY apps.json ./apps.json
 
-# Create logs directory and set permissions
-RUN mkdir -p logs && chmod 777 logs
+# Create data and logs directories and set permissions
+RUN mkdir -p data logs && chmod 777 data logs
 
 # Environment variables
 ENV PORT=3000

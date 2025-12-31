@@ -2,7 +2,10 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const db = new Database('data.db');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../');
+const dbPath = path.join(DATA_DIR, 'data.db');
+
+const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');
 
 function initSchema() {

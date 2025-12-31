@@ -8,6 +8,21 @@ module.exports = (io) => {
     res.json(db.prepare('SELECT * FROM apps').all());
   });
 
+  router.get('/statuses', (req, res) => {
+    const statuses = db.prepare(`
+      SELECT app_id, status 
+      FROM deployments
+      WHERE id IN (
+        SELECT MAX(id) FROM deployments GROUP BY app_id
+      )
+    `).all();
+    const statusMap = statuses.reduce((acc, row) => {
+      acc[row.app_id] = row.status;
+      return acc;
+    }, {});
+    res.json(statusMap);
+  });
+
   router.post('/', (req, res) => {
     const { id, name, repo, branch, script, cwd, webhook_secret, strategy, template_id, template_params, flow_config, ssh_host, ssh_user } = req.body;
     try {
