@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Swarm Deployer</title>
+    <title>HookFlux</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
@@ -15,12 +15,32 @@
         font-family: 'JetBrains Mono', monospace;
         margin: 0;
         padding: 0;
+        font-size: 14px;
       }
       
-      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar { width: 8px; }
       ::-webkit-scrollbar-track { background: #09090b; }
-      ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #18181b;
+      }
+      .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+        background: #3b82f6;
+      }
+
+      /* Prism JS Overrides */
+      pre[class*="language-"], code[class*="language-"] {
+        font-family: 'JetBrains Mono', monospace !important;
+        background: transparent !important;
+        text-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
     </style>
   </head>
   <body>

@@ -1,4 +1,4 @@
-# Gemini Project Summary: Swarm Webhook Deployer
+# Gemini Project Summary: HookFlux
 
 ## Accomplishments So Far
 

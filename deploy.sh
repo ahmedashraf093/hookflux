@@ -15,7 +15,7 @@ mkdir -p logs
 chmod 777 logs
 
 echo "Building new image..."
-docker build -t swarm-deployer:latest .
+docker build -t hookflux:latest .
 
 echo "Updating Swarm Stack..."
 docker stack deploy -c docker-stack.yml deployer

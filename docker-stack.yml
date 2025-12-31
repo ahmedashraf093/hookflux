@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    image: swarm-deployer:latest
+    image: hookflux:latest
     build: .
     env_file: .env
     networks:
@@ -22,11 +22,11 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.swarm.network=traefik-public"
-        - "traefik.http.routers.swarm-deployer.rule=Host(`webhooks.$DOMAIN`)"
-        - "traefik.http.routers.swarm-deployer.entrypoints=https"
-        - "traefik.http.routers.swarm-deployer.tls=true"
-        - "traefik.http.routers.swarm-deployer.tls.certresolver=le"
-        - "traefik.http.services.swarm-deployer.loadbalancer.server.port=3000"
+        - "traefik.http.routers.hookflux.rule=Host(`webhooks.$DOMAIN`)"
+        - "traefik.http.routers.hookflux.entrypoints=https"
+        - "traefik.http.routers.hookflux.tls=true"
+        - "traefik.http.routers.hookflux.tls.certresolver=le"
+        - "traefik.http.services.hookflux.loadbalancer.server.port=3000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/apps"]
       interval: 30s
