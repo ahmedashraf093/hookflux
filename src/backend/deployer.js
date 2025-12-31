@@ -71,6 +71,7 @@ function runDeploy(appConfig, io) {
       spawnCmd = 'ssh';
       spawnArgs = [
         '-o', 'StrictHostKeyChecking=no',
+        '-o', 'UserKnownHostsFile=/dev/null',
         '-o', 'BatchMode=yes',
         `${user}@${appConfig.ssh_host}`,
         'bash -s'
@@ -84,6 +85,28 @@ function runDeploy(appConfig, io) {
       env: { ...process.env, APP_ID: appConfig.id, DEPLOYMENT_ID: deploymentId }
     });
 
+    // Timeout Logic
+    const timeoutMinutes = parseInt(process.env.PIPELINE_TIMEOUT) || 10;
+    const timeoutMs = timeoutMinutes * 60 * 1000;
+    let isTimedOut = false;
+
+    const timeoutTimer = setTimeout(() => {
+      isTimedOut = true;
+      const timeoutMsg = `\nERROR: Pipeline timed out after ${timeoutMinutes} minutes. Terminating process...\n`;
+      emitLog(timeoutMsg, 'error');
+      
+      // Kill the process group
+      try {
+        child.kill('SIGTERM');
+        // Give it a moment then force kill if still alive
+        setTimeout(() => {
+          if (child.exitCode === null) child.kill('SIGKILL');
+        }, 2000);
+      } catch (e) {
+        console.error('Failed to kill timed out process:', e);
+      }
+    }, timeoutMs);
+
     // If SSH, we need to pipe the script content to stdin
     if (appConfig.ssh_host) {
       const scriptContent = fs.readFileSync(finalScriptPath);
@@ -92,6 +115,7 @@ function runDeploy(appConfig, io) {
     }
 
     child.on('error', (err) => {
+      clearTimeout(timeoutTimer);
       const errMsg = `\nFailed to start pipeline: ${err.message}\n`;
       emitLog(errMsg, 'error');
       db.prepare('UPDATE deployments SET status = ?, logs = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?')
@@ -103,8 +127,13 @@ function runDeploy(appConfig, io) {
     child.stderr.on('data', (data) => emitLog(`ERROR: ${data.toString()}`, 'error'));
 
     child.on('close', (code) => {
-      const status = code === 0 ? 'success' : 'failed';
-      emitLog(`\nPipeline finished with code ${code}\n`);
+      clearTimeout(timeoutTimer);
+      const status = isTimedOut ? 'failed' : (code === 0 ? 'success' : 'failed');
+      const endMsg = isTimedOut 
+        ? `\nPipeline terminated due to timeout.\n`
+        : `\nPipeline finished with code ${code}\n`;
+      
+      emitLog(endMsg);
       logStream.end();
 
       // Cap DB log size to 500KB to prevent DB ballooning

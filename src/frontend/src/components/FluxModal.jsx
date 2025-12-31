@@ -179,65 +179,69 @@ export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modu
           </div>
         </div>
 
+        {/* Step Parameter Overlay */}
         {editingStepIndex !== null && (
-          <div className="absolute inset-0 bg-zinc-950 z-10 p-12 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Step_Config</h4>
-                <p className="text-lg font-bold text-zinc-100 uppercase">{editingStepIndex + 1}: {modules.find(m => m.id === flowSteps[editingStepIndex].template_id)?.name}</p>
-              </div>
-              <button type="button" onClick={() => setEditingStepIndex(null)} className="text-zinc-500 hover:text-zinc-200 transition-colors bg-zinc-900 p-2 border border-zinc-800"><X size={24} /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-10 pr-4">
-              {Object.keys(flowSteps[editingStepIndex].params).map(p => (
-                <div key={p}>
-                  <label className="block text-[10px] font-bold text-zinc-600 uppercase mb-2 tracking-widest">{p}_</label>
-                  <input className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-5 py-4 text-sm font-mono outline-none focus:border-blue-500 transition-all shadow-inner" value={flowSteps[editingStepIndex].params[p]} onChange={e => updateStepParam(editingStepIndex, p, e.target.value)} required />
+          <div className="fixed inset-0 bg-zinc-950 z-[70] p-12 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="max-w-3xl mx-auto w-full h-full flex flex-col">
+              <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Step_Config</h4>
+                  <p className="text-lg font-bold text-zinc-100 uppercase">{editingStepIndex + 1}: {modules.find(m => m.id === flowSteps[editingStepIndex].template_id)?.name}</p>
                 </div>
-              ))}
+                <button type="button" onClick={() => setEditingStepIndex(null)} className="text-zinc-500 hover:text-zinc-200 transition-colors bg-zinc-900 p-2 border border-zinc-800"><X size={24} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-10 pr-4 custom-scrollbar">
+                {Object.keys(flowSteps[editingStepIndex].params).map(p => (
+                  <div key={p}>
+                    <label className="block text-[10px] font-bold text-zinc-600 uppercase mb-2 tracking-widest">{p}_</label>
+                    <input className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-5 py-4 text-sm font-mono outline-none focus:border-blue-500 transition-all shadow-inner" value={flowSteps[editingStepIndex].params[p]} onChange={e => updateStepParam(editingStepIndex, p, e.target.value)} required />
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => setEditingStepIndex(null)} className="mt-10 bg-blue-600 hover:bg-blue-500 text-white py-4 font-black uppercase text-xs tracking-[0.3em] transition-all shadow-2xl">Apply_Config</button>
             </div>
-            <button type="button" onClick={() => setEditingStepIndex(null)} className="mt-10 bg-blue-600 hover:bg-blue-500 text-white py-4 font-black uppercase text-xs tracking-[0.3em] transition-all shadow-2xl">Apply_Config</button>
           </div>
         )}
 
         {/* Module Selector Overlay */}
         {showModuleSelector && (
-          <div className="absolute inset-0 bg-zinc-950 z-20 p-12 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Module_Library</h4>
-                <p className="text-lg font-bold text-zinc-100 uppercase tracking-tight">Select module to insert</p>
+          <div className="fixed inset-0 bg-zinc-950 z-[70] p-12 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="max-w-3xl mx-auto w-full h-full flex flex-col">
+              <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Module_Library</h4>
+                  <p className="text-lg font-bold text-zinc-100 uppercase tracking-tight">Select module to insert</p>
+                </div>
+                <button type="button" onClick={() => setShowModuleSelector(false)} className="text-zinc-500 hover:text-zinc-200 transition-colors bg-zinc-900 p-2 border border-zinc-800"><X size={24} /></button>
               </div>
-              <button type="button" onClick={() => setShowModuleSelector(false)} className="text-zinc-500 hover:text-zinc-200 transition-colors bg-zinc-900 p-2 border border-zinc-800"><X size={24} /></button>
-            </div>
-            
-            <input 
-              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-6 py-4 text-sm font-mono outline-none focus:border-blue-500 transition-all mb-8" 
-              placeholder="Search modules..." 
-              autoFocus
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+              
+              <input 
+                className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-6 py-4 text-sm font-mono outline-none focus:border-blue-500 transition-all mb-8" 
+                placeholder="Search modules..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
 
-            <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-3 pr-4">
-              {modules.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.id.toLowerCase().includes(searchTerm.toLowerCase())).map(m => (
-                <button key={m.id} type="button" onClick={() => { addFlowStep(m.id); setShowModuleSelector(false); setSearchTerm(''); }} className="text-left bg-zinc-900 border border-zinc-800 p-6 hover:border-blue-600 transition-all group relative overflow-hidden">
-                  <div className="flex justify-between items-center relative z-10">
-                    <div>
-                      <div className="font-black text-zinc-100 uppercase group-hover:text-blue-400 transition-colors">{m.name}</div>
-                      <div className="text-[10px] text-zinc-600 font-mono mt-1">{m.id}</div>
+              <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-3 pr-4 custom-scrollbar">
+                {modules.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.id.toLowerCase().includes(searchTerm.toLowerCase())).map(m => (
+                  <button key={m.id} type="button" onClick={() => { addFlowStep(m.id); setShowModuleSelector(false); setSearchTerm(''); }} className="text-left bg-zinc-900 border border-zinc-800 p-6 hover:border-blue-600 transition-all group relative overflow-hidden">
+                    <div className="flex justify-between items-center relative z-10">
+                      <div>
+                        <div className="font-black text-zinc-100 uppercase group-hover:text-blue-400 transition-colors">{m.name}</div>
+                        <div className="text-[10px] text-zinc-600 font-mono mt-1">{m.id}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2 relative z-10">
-                    {m.params && (Array.isArray(m.params) ? m.params : []).map(p => (
-                      <span key={p} className="text-[8px] font-black bg-zinc-950 px-2 py-0.5 text-zinc-500 border border-zinc-800 uppercase tracking-tighter">{p}</span>
-                    ))}
-                  </div>
-                </button>
-              ))}
+                    <div className="mt-4 flex flex-wrap gap-2 relative z-10">
+                      {m.params && (Array.isArray(m.params) ? m.params : []).map(p => (
+                        <span key={p} className="text-[8px] font-black bg-zinc-950 px-2 py-0.5 text-zinc-500 border border-zinc-800 uppercase tracking-tighter">{p}</span>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <button type="button" onClick={() => setShowModuleSelector(false)} className="mt-10 border border-zinc-800 text-zinc-500 py-4 font-black uppercase text-xs tracking-[0.3em] hover:bg-zinc-900 transition-all shadow-2xl">Cancel</button>
             </div>
-            
-            <button type="button" onClick={() => setShowModuleSelector(false)} className="mt-10 border border-zinc-800 text-zinc-500 py-4 font-black uppercase text-xs tracking-[0.3em] hover:bg-zinc-900 transition-all shadow-2xl">Cancel</button>
           </div>
         )}
 
