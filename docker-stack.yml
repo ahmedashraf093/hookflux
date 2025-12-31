@@ -9,9 +9,13 @@ services:
       - traefik-public
     environment:
       - PORT=3000
+      - DATA_DIR=/app/data
+      - LOGS_DIR=/app/logs
+      - SSH_DIR=/root/.ssh
     volumes:
-      - ./data.db:/app/data.db
-      - ./logs:/app/logs
+      - hookflux_data:/app/data
+      - hookflux_logs:/app/logs
+      - hookflux_ssh:/root/.ssh
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       mode: replicated
@@ -36,3 +40,8 @@ services:
 networks:
   traefik-public:
     external: true
+
+volumes:
+  hookflux_data:
+  hookflux_logs:
+  hookflux_ssh:

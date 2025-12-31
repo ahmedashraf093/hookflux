@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { db } = require('./db');
 
-const LOGS_DIR = path.join(__dirname, '../../logs');
+const LOGS_DIR = process.env.LOGS_DIR || path.join(__dirname, '../../logs');
 
 function runDeploy(appConfig, io) {
   try {

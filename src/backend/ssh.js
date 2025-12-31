@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const SSH_DIR = path.join(os.homedir(), '.ssh');
+const SSH_DIR = process.env.SSH_DIR || path.join(os.homedir(), '.ssh');
 const PRIVATE_KEY_PATH = path.join(SSH_DIR, 'id_rsa');
 const PUBLIC_KEY_PATH = path.join(SSH_DIR, 'id_rsa.pub');
 
