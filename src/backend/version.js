@@ -60,10 +60,14 @@ function getVersionInfo(req, res) {
 
   getLatestVersion(currentPkg.version).then(latest => {
     const error = cachedLatestVersion === null && currentPkg.version === latest ? 'Failed to fetch latest version' : null;
+    const updateAvailable = isNewer(latest, currentPkg.version);
+    
+    console.log(`[Version Check] Local: ${currentPkg.version}, Remote: ${latest}, Update: ${updateAvailable}`);
+
     res.json({
       current: currentPkg.version,
       latest: latest,
-      updateAvailable: isNewer(latest, currentPkg.version),
+      updateAvailable: updateAvailable,
       error: error
     });
   }).catch(err => {

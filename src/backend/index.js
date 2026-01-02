@@ -105,7 +105,12 @@ app.use('/api', authMiddleware);
 
 app.post('/api/auth/change-password', changePassword);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-app.get('/api/system/version', getVersionInfo);
+app.get('/api/system/version', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+}, getVersionInfo);
 app.get('/api/system/public-key', (req, res) => {
   const key = getPublicKey();
   key ? res.json({ publicKey: key }) : res.status(500).send('Failed to generate key');
