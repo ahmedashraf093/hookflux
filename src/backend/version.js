@@ -9,7 +9,7 @@ let cachedLatestVersion = null;
 let lastChecked = 0;
 const CACHE_TTL = 3600000; // 1 hour
 
-async function getLatestVersion() {
+async function getLatestVersion(currentVersion) {
   const now = Date.now();
   if (cachedLatestVersion && (now - lastChecked < CACHE_TTL)) {
     return cachedLatestVersion;
@@ -28,13 +28,13 @@ async function getLatestVersion() {
     throw new Error('Invalid response from GitHub');
   } catch (err) {
     console.warn(`[Version Check] Failed to fetch latest version from ${REPO}:`, err.message);
-    return pkg.version;
+    return currentVersion;
   }
 }
 
 function isNewer(latest, current) {
-  const l = latest.split('.').map(Number);
-  const c = current.split('.').map(Number);
+  const l = latest.replace(/[^0-9.]/g, '').split('.').map(Number);
+  const c = current.replace(/[^0-9.]/g, '').split('.').map(Number);
   for (let i = 0; i < Math.max(l.length, c.length); i++) {
     if ((l[i] || 0) > (c[i] || 0)) return true;
     if ((l[i] || 0) < (c[i] || 0)) return false;
@@ -43,22 +43,28 @@ function isNewer(latest, current) {
 }
 
 function getVersionInfo(req, res) {
-  getLatestVersion().then(latest => {
-    const error = cachedLatestVersion === null && pkg.version === latest ? 'Failed to fetch latest version' : null;
+  const currentPkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
+  const forceCheck = req.query.force === 'true';
+  
+  if (forceCheck) {
+    cachedLatestVersion = null;
+    lastChecked = 0;
+  }
+
+  getLatestVersion(currentPkg.version).then(latest => {
+    const error = cachedLatestVersion === null && currentPkg.version === latest ? 'Failed to fetch latest version' : null;
     res.json({
-      current: pkg.version,
+      current: currentPkg.version,
       latest: latest,
-      updateAvailable: isNewer(latest, pkg.version),
+      updateAvailable: isNewer(latest, currentPkg.version),
       error: error
     });
   }).catch(err => {
     res.json({
-      current: pkg.version,
-      latest: pkg.version,
+      current: currentPkg.version,
+      latest: currentPkg.version,
       updateAvailable: false,
       error: err.message
     });
   });
 }
-
-module.exports = { getVersionInfo };
