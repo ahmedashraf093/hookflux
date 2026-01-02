@@ -5,6 +5,49 @@ const { db } = require('./db');
 
 const LOGS_DIR = process.env.LOGS_DIR || path.join(__dirname, '../../logs');
 
+function sanitize(val, regex) {
+  const str = String(val);
+  if (!regex.test(str)) {
+    throw new Error(`Invalid value detected: ${str}`);
+  }
+  return str;
+}
+
+function prepareScript(appConfig, flowSteps) {
+  let fullFlowScript = '#!/bin/bash\nset -e\n';
+  
+  for (const [index, step] of flowSteps.entries()) {
+    const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(step.template_id);
+    if (!template) throw new Error(`Template ${step.template_id} not found for step ${index + 1}`);
+    
+    let stepContent = template.content;
+    
+    const safeRepo = sanitize(`git@github.com:${appConfig.repo}.git`, /^git@github\.com:[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+\.git$/);
+    const safeBranch = sanitize(appConfig.branch, /^[a-zA-Z0-9-_/.]+$/);
+    const safeAppId = sanitize(appConfig.id, /^[a-zA-Z0-9-_]+$/);
+
+    const allParams = {
+      ...step.params,
+      REPO_URL: safeRepo,
+      BRANCH: safeBranch,
+      APP_ID: safeAppId,
+      DOMAIN: process.env.DOMAIN || 'localhost'
+    };
+
+    Object.keys(allParams).forEach(key => {
+      if (/[;&|`$]/.test(String(allParams[key]))) {
+           throw new Error(`Potential injection detected in parameter ${key}`);
+      }
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      stepContent = stepContent.replace(regex, allParams[key]);
+    });
+
+    fullFlowScript += `\n# --- STEP ${index + 1}: ${template.name} ---\n`;
+    fullFlowScript += stepContent + '\n';
+  }
+  return fullFlowScript;
+}
+
 function runDeploy(appConfig, io) {
   try {
     const deployment = db.prepare('INSERT INTO deployments (app_id, status) VALUES (?, ?)').run(appConfig.id, 'running');
@@ -30,53 +73,7 @@ function runDeploy(appConfig, io) {
       throw new Error("No deployment steps defined in flow configuration.");
     }
 
-    let fullFlowScript = '#!/bin/bash\nset -e\n';
-    
-    for (const [index, step] of flowSteps.entries()) {
-      const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(step.template_id);
-      if (!template) throw new Error(`Template ${step.template_id} not found for step ${index + 1}`);
-      
-      let stepContent = template.content;
-      
-      // Sanitize inputs to prevent script injection
-      const sanitize = (val, regex) => {
-        const str = String(val);
-        if (!regex.test(str)) {
-          throw new Error(`Invalid value for parameter detected: ${str}`);
-        }
-        return str;
-      };
-
-      const safeRepo = sanitize(`git@github.com:${appConfig.repo}.git`, /^git@github\.com:[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+\.git$/);
-      const safeBranch = sanitize(appConfig.branch, /^[a-zA-Z0-9-_/.]+$/);
-      const safeAppId = sanitize(appConfig.id, /^[a-zA-Z0-9-_]+$/);
-
-      const allParams = {
-        ...step.params,
-        REPO_URL: safeRepo,
-        BRANCH: safeBranch,
-        APP_ID: safeAppId,
-        DOMAIN: process.env.DOMAIN || 'localhost'
-      };
-
-      Object.keys(allParams).forEach(key => {
-        // Also simple-sanitize extra params if possible, or quote them?
-        // Ideally we should quote them in the script, but we are replacing text.
-        // Best effort: only replace if value matches safe regex or wrap in quotes?
-        // The safest approach for unknown params is to verify they don't contain dangerous shell chars.
-        // For now, let's enforce a strict regex for ANY injected value if we can, but we don't know the format of generic params.
-        // Let's at least block command separators ; | & $ `
-        if (/[;&|`$]/.test(String(allParams[key]))) {
-             throw new Error(`Potential injection detected in parameter ${key}`);
-        }
-        
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        stepContent = stepContent.replace(regex, allParams[key]);
-      });
-
-      fullFlowScript += `\n# --- STEP ${index + 1}: ${template.name} ---\n`;
-      fullFlowScript += stepContent + '\n';
-    }
+    const fullFlowScript = prepareScript(appConfig, flowSteps);
 
     const tempScriptDir = path.join(__dirname, '../../temp_scripts');
     if (!fs.existsSync(tempScriptDir)) fs.mkdirSync(tempScriptDir, { recursive: true });
@@ -92,7 +89,6 @@ function runDeploy(appConfig, io) {
       const user = appConfig.ssh_user || 'root';
       emitLog(`Target: Remote Host (${user}@${appConfig.ssh_host}) via SSH\n`);
       
-      // We pipe the script to the remote bash to avoid file transfer issues
       spawnCmd = 'ssh';
       spawnArgs = [
         '-o', 'StrictHostKeyChecking=no',
@@ -110,7 +106,6 @@ function runDeploy(appConfig, io) {
       env: { ...process.env, APP_ID: appConfig.id, DEPLOYMENT_ID: deploymentId }
     });
 
-    // Timeout Logic
     const timeoutMinutes = parseInt(process.env.PIPELINE_TIMEOUT) || 10;
     const timeoutMs = timeoutMinutes * 60 * 1000;
     let isTimedOut = false;
@@ -120,10 +115,8 @@ function runDeploy(appConfig, io) {
       const timeoutMsg = `\nERROR: Pipeline timed out after ${timeoutMinutes} minutes. Terminating process...\n`;
       emitLog(timeoutMsg, 'error');
       
-      // Kill the process group
       try {
         child.kill('SIGTERM');
-        // Give it a moment then force kill if still alive
         setTimeout(() => {
           if (child.exitCode === null) child.kill('SIGKILL');
         }, 2000);
@@ -132,7 +125,6 @@ function runDeploy(appConfig, io) {
       }
     }, timeoutMs);
 
-    // If SSH, we need to pipe the script content to stdin
     if (appConfig.ssh_host) {
       const scriptContent = fs.readFileSync(finalScriptPath);
       child.stdin.write(scriptContent);
@@ -161,7 +153,6 @@ function runDeploy(appConfig, io) {
       emitLog(endMsg);
       logStream.end();
 
-      // Cap DB log size to 500KB to prevent DB ballooning
       const MAX_DB_LOG_SIZE = 500 * 1024;
       const dbLogs = fullLogs.length > MAX_DB_LOG_SIZE 
         ? "...[Truncated, view full file for details]...\n" + fullLogs.slice(-MAX_DB_LOG_SIZE)
@@ -182,4 +173,4 @@ function runDeploy(appConfig, io) {
   }
 }
 
-module.exports = { runDeploy };
+module.exports = { runDeploy, sanitize, prepareScript };

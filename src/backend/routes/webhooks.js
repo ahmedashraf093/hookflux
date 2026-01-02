@@ -9,10 +9,15 @@ function verifySignature(req, secret) {
   if (!signature || !secret) return false;
   const hmac = crypto.createHmac('sha256', secret);
   const digest = 'sha256=' + hmac.update(req.rawBody).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  } catch (e) {
+    return false;
+  }
 }
 
-module.exports = (io) => {
+const webhookRouter = (io) => {
   router.post('/:id', (req, res) => {
     const { id } = req.params;
     const { repository, ref } = req.body;
@@ -38,3 +43,6 @@ module.exports = (io) => {
 
   return router;
 };
+
+module.exports = webhookRouter;
+module.exports.verifySignature = verifySignature;
