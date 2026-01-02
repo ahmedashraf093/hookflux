@@ -49,5 +49,11 @@
     "cross-env": "^10.1.0",
     "jest": "^30.2.0",
     "supertest": "^7.1.4"
+  },
+  "overrides": {
+    "ansi-to-react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }

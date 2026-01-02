@@ -38,7 +38,7 @@ sudo -u "$REAL_USER" git pull
 
 # 2. Install dependencies
 log "Updating dependencies..."
-sudo -u "$REAL_USER" npm install --legacy-peer-deps
+sudo -u "$REAL_USER" npm install
 
 # 3. Rebuild native modules
 log "Rebuilding native modules (SQLite)..."
