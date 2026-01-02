@@ -166,7 +166,10 @@ fi
 # 6. Setup Application
 log "Setting up application dependencies..."
 # Run npm install as the real user to avoid permission issues in ~/.npm
-run_cmd "sudo -u \"$REAL_USER\" npm install"
+run_cmd "sudo -u \"$REAL_USER\" npm install --legacy-peer-deps"
+
+log "Rebuilding native modules (SQLite)..."
+run_cmd "sudo -u \"$REAL_USER\" npm rebuild"
 
 log "Building frontend..."
 run_cmd "sudo -u \"$REAL_USER\" npm run build"

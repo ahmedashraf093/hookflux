@@ -38,13 +38,21 @@ sudo -u "$REAL_USER" git pull
 
 # 2. Install dependencies
 log "Updating dependencies..."
-sudo -u "$REAL_USER" npm install
+sudo -u "$REAL_USER" npm install --legacy-peer-deps
 
-# 3. Build frontend
+# 3. Rebuild native modules
+log "Rebuilding native modules (SQLite)..."
+sudo -u "$REAL_USER" npm rebuild
+
+# 4. Run tests
+log "Running system tests..."
+sudo -u "$REAL_USER" npm test
+
+# 5. Build frontend
 log "Building frontend..."
 sudo -u "$REAL_USER" npm run build
 
-# 4. Restart service
+# 6. Restart service
 log "Restarting HookFlux service..."
 systemctl restart hookflux
 

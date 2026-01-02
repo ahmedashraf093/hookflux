@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Set up a temporary test database
-const TEST_DATA_DIR = path.join(__dirname, '../tmp_test_data');
+const TEST_DATA_DIR = path.join(__dirname, '../tmp_test_data_' + Date.now());
 if (!fs.existsSync(TEST_DATA_DIR)) fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
 process.env.DATA_DIR = TEST_DATA_DIR;
 
@@ -16,10 +16,14 @@ describe('Database Logic', () => {
   afterAll(() => {
     db.close();
     // Clean up test DB
-    if (fs.existsSync(path.join(TEST_DATA_DIR, 'data.db'))) {
-      fs.unlinkSync(path.join(TEST_DATA_DIR, 'data.db'));
+    try {
+      if (fs.existsSync(path.join(TEST_DATA_DIR, 'data.db'))) {
+        fs.unlinkSync(path.join(TEST_DATA_DIR, 'data.db'));
+      }
+      fs.rmdirSync(TEST_DATA_DIR);
+    } catch (e) {
+      console.warn('Cleanup failed:', e.message);
     }
-    fs.rmdirSync(TEST_DATA_DIR);
   });
 
   test('should initialize schema and create users table', () => {

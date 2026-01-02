@@ -4,9 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 describe('Deployer Logic', () => {
+  const TEST_DATA_DIR = path.join(__dirname, '../tmp_test_data_deployer_' + Date.now());
+
   beforeAll(() => {
     // Set up a temporary test database for prepareScript to work
-    const TEST_DATA_DIR = path.join(__dirname, '../tmp_test_data_deployer');
     if (!fs.existsSync(TEST_DATA_DIR)) fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     process.env.DATA_DIR = TEST_DATA_DIR;
     initSchema();
@@ -14,11 +15,14 @@ describe('Deployer Logic', () => {
 
   afterAll(() => {
     db.close();
-    const TEST_DATA_DIR = process.env.DATA_DIR;
-    if (fs.existsSync(path.join(TEST_DATA_DIR, 'data.db'))) {
-      fs.unlinkSync(path.join(TEST_DATA_DIR, 'data.db'));
+    try {
+      if (fs.existsSync(path.join(TEST_DATA_DIR, 'data.db'))) {
+        fs.unlinkSync(path.join(TEST_DATA_DIR, 'data.db'));
+      }
+      fs.rmdirSync(TEST_DATA_DIR);
+    } catch (e) {
+      console.warn('Cleanup failed:', e.message);
     }
-    fs.rmdirSync(TEST_DATA_DIR);
   });
 
   test('sanitize should allow safe values', () => {
