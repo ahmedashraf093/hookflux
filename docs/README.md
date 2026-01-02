@@ -57,3 +57,7 @@ The system executes the configured shell script using `bash`. It sets the follow
 - All variables from your local `.env` file.
 
 Real-time logs are captured from `stdout` and `stderr` and streamed to any active dashboard sessions.
+
+## Deployment to Production
+
+For deploying HookFlux to a live Ubuntu server with Nginx, SSL, and Systemd, please refer to the [Ubuntu Deployment Guide](../deployment/ubuntu/README.md).

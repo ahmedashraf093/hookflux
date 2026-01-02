@@ -1,5 +1,7 @@
 # HookFlux: Orchestrate Your Infrastructure with Signal-Driven Pipelines
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ![HookFlux Dashboard](home.jpg)
 
 HookFlux is a high-performance, self-hosted automation engine designed to transform external webhooks into complex, multi-step execution flows. Built for developers who demand the control of local bash scripts with the elegance of a modern TUI, HookFlux turns simple signals into sophisticated infrastructure orchestration.
@@ -49,15 +51,22 @@ Control HookFlux behavior via environment variables:
 - `LOGS_DIR`: Path to the raw execution logs directory.
 - `SSH_DIR`: Path to the system SSH key directory.
 
-## Deployment Command Center
+## Installation & Deployment
 
-Launch your own execution engine in seconds:
+HookFlux is designed to run anywhere you can execute a shell.
 
+### Method 1: Ubuntu VM (Recommended for Standalone)
+Use our automated setup script for a production-ready environment with Nginx and SSL:
 ```bash
-# 1. Initialize persistent data stores
-touch data.db && mkdir -p logs && chmod 777 logs
+git clone https://github.com/yourusername/hookflux.git
+cd hookflux
+sudo ./deployment/ubuntu/setup.sh your-domain.com
+```
+See the [Ubuntu Deployment Guide](deployment/ubuntu/README.md) for details.
 
-# 2. Deploy to Docker Swarm
+### Method 2: Docker Swarm
+Launch as a stack in seconds:
+```bash
 docker stack deploy -c docker-stack.yml hookflux
 ```
 

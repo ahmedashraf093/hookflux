@@ -39,6 +39,7 @@ export default function App() {
   const [showPublicKeyModal, setShowPublicKeyModal] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [versionInfo, setVersionInfo] = useState(null);
 
   const logEndRef = useRef(null);
   const socketRef = useRef(null);
@@ -97,6 +98,7 @@ export default function App() {
     fetchPublicKey();
     fetchFluxStatuses();
     fetchAuditLogs();
+    fetchVersion();
   };
 
   const fetchFluxes = async () => {
@@ -145,6 +147,13 @@ export default function App() {
     try {
       const res = await api.system.getAuditLogs();
       setAuditLogs(res.data);
+    } catch (err) {}
+  };
+
+  const fetchVersion = async () => {
+    try {
+      const res = await api.system.getVersion();
+      setVersionInfo(res.data);
     } catch (err) {}
   };
 
@@ -275,6 +284,7 @@ export default function App() {
         onShowPublicKey={() => setShowPublicKeyModal(true)}
         isMobileOpen={isMobileSidebarOpen}
         setIsMobileOpen={setIsMobileSidebarOpen}
+        versionInfo={versionInfo}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">

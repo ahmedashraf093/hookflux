@@ -37,14 +37,39 @@ function runDeploy(appConfig, io) {
       if (!template) throw new Error(`Template ${step.template_id} not found for step ${index + 1}`);
       
       let stepContent = template.content;
+      
+      // Sanitize inputs to prevent script injection
+      const sanitize = (val, regex) => {
+        const str = String(val);
+        if (!regex.test(str)) {
+          throw new Error(`Invalid value for parameter detected: ${str}`);
+        }
+        return str;
+      };
+
+      const safeRepo = sanitize(`git@github.com:${appConfig.repo}.git`, /^git@github\.com:[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+\.git$/);
+      const safeBranch = sanitize(appConfig.branch, /^[a-zA-Z0-9-_/.]+$/);
+      const safeAppId = sanitize(appConfig.id, /^[a-zA-Z0-9-_]+$/);
+
       const allParams = {
         ...step.params,
-        REPO_URL: `git@github.com:${appConfig.repo}.git`,
-        BRANCH: appConfig.branch,
-        APP_ID: appConfig.id
+        REPO_URL: safeRepo,
+        BRANCH: safeBranch,
+        APP_ID: safeAppId,
+        DOMAIN: process.env.DOMAIN || 'localhost'
       };
 
       Object.keys(allParams).forEach(key => {
+        // Also simple-sanitize extra params if possible, or quote them?
+        // Ideally we should quote them in the script, but we are replacing text.
+        // Best effort: only replace if value matches safe regex or wrap in quotes?
+        // The safest approach for unknown params is to verify they don't contain dangerous shell chars.
+        // For now, let's enforce a strict regex for ANY injected value if we can, but we don't know the format of generic params.
+        // Let's at least block command separators ; | & $ `
+        if (/[;&|`$]/.test(String(allParams[key]))) {
+             throw new Error(`Potential injection detected in parameter ${key}`);
+        }
+        
         const regex = new RegExp(`{{${key}}}`, 'g');
         stepContent = stepContent.replace(regex, allParams[key]);
       });

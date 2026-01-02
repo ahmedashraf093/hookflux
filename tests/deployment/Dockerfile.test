@@ -1,0 +1,14 @@
+FROM ubuntu:22.04
+
+# Avoid prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install sudo and minimal tools to simulate a fresh server
+RUN apt-get update && apt-get install -y sudo git curl openssh-server openssl
+
+# Create a test user (optional, but good practice if script handles non-root users)
+# We will just run as root for simplicity in docker, 
+# or we can simulate the sudo behavior.
+# The script checks for root (EUID==0), which is true by default in Docker.
+
+WORKDIR /app

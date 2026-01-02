@@ -40,6 +40,7 @@ export const system = {
   getPublicKey: () => api.get('/system/public-key'),
   getAuditLogs: () => api.get('/system/audit'),
   getHealth: () => api.get('/health'),
+  getVersion: () => api.get('/system/version'),
 };
 
 export const deployments = {

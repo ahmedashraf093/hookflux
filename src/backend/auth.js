@@ -96,4 +96,12 @@ function changePassword(req, res) {
   }
 }
 
-module.exports = { login, authMiddleware, changePassword };
+function verifyToken(token) {
+  const secret = getSecret();
+  const decoded = jwt.verify(token, secret);
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(decoded.userId);
+  if (!user) throw new Error('User no longer exists');
+  return decoded;
+}
+
+module.exports = { login, authMiddleware, changePassword, verifyToken };

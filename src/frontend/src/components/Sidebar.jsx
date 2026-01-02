@@ -15,7 +15,8 @@ export default function Sidebar({
   fluxStatuses = {},
   onShowPublicKey,
   isMobileOpen,
-  setIsMobileOpen
+  setIsMobileOpen,
+  versionInfo
 }) {
   const getStatusColor = (fluxId) => {
     const status = fluxStatuses[fluxId];
@@ -111,6 +112,16 @@ export default function Sidebar({
       </div>
       
       <div className="p-1 border-t border-zinc-800 hidden md:block">
+        {versionInfo && (
+          <div className={`px-3 py-2 text-[10px] font-bold transition-all ${isCollapsed ? 'text-center' : 'flex items-center justify-between'}`}>
+            <span className="text-zinc-600">v{versionInfo.current}</span>
+            {!isCollapsed && versionInfo.updateAvailable && (
+              <span className="bg-orange-500/10 text-orange-500 px-1.5 py-0.5 rounded animate-pulse cursor-help" title={`New version available: v${versionInfo.latest}`}>
+                UPDATE_READY
+              </span>
+            )}
+          </div>
+        )}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="w-full flex items-center justify-center p-1.5 text-xs font-bold text-zinc-600 hover:text-zinc-300 transition-colors"
