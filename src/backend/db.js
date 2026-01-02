@@ -113,6 +113,19 @@ echo "Service {{SERVICE_NAME}} updated for {{DOMAIN}}"`;
 
     db.prepare('INSERT INTO templates (id, name, content, params) VALUES (?, ?, ?, ?)').run('laravel-swarm', 'Laravel Pipeline', laravelContent, JSON.stringify(['IMAGE_NAME', 'STACK_NAME', 'DOMAIN']));
     db.prepare('INSERT INTO templates (id, name, content, params) VALUES (?, ?, ?, ?)').run('nodejs-swarm', 'Node.js Update', nodejsContent, JSON.stringify(['IMAGE_NAME', 'SERVICE_NAME', 'DOMAIN']));
+    
+    const gitSyncContent = `#!/bin/bash
+set -e
+echo "--- Syncing {{BRANCH}} ---"
+if [ ! -d ".git" ]; then
+    git clone -b {{BRANCH}} {{REPO_URL}} .
+else
+    git fetch origin {{BRANCH}}
+    git reset --hard origin/{{BRANCH}}
+    git clean -fd
+fi`;
+    db.prepare('INSERT INTO templates (id, name, content, params) VALUES (?, ?, ?, ?)').run('git-sync', 'Git Force Sync', gitSyncContent, JSON.stringify([]));
+    
     db.prepare('INSERT INTO templates (id, name, content, params) VALUES (?, ?, ?, ?)').run('generic-bash', 'Custom Script', '#!/bin/bash\n{{SCRIPT_CONTENT}}', JSON.stringify(['SCRIPT_CONTENT']));
   }
 

@@ -68,7 +68,22 @@ write_file() {
     fi
 }
 
+show_banner() {
+    echo -e "${BLUE}"
+    echo "  _    _  ____   ____  _  __ ______ _      _    _ __   __"
+    echo " | |  | |/ __ \ / __ \| |/ /|  ____| |    | |  | |\ \ / /"
+    echo " | |__| | |  | | |  | | ' / | |__  | |    | |  | | \ V / "
+    echo " |  __  | |  | | |  | |  <  |  __| | |    | |  | |  > <  "
+    echo " | |  | | |__| | |__| | . \ | |    | |____| |__| | / . \ "
+    echo " |_|  |_|\____/ \____/|_|\_\|_|    |______|\____/ /_/ \_\\"
+    echo -e "${NC}"
+    echo -e "${GREEN}    >>> ORCHESTRATE YOUR INFRASTRUCTURE <<<${NC}"
+    echo ""
+}
+
 # 1. Check Arguments and Permissions
+show_banner
+
 if [ -z "$DOMAIN" ]; then
     err "Usage: sudo ./setup.sh <domain_name> [--dry-run]"
 fi

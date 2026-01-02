@@ -1,5 +1,6 @@
 import React from 'react';
 import { Terminal } from 'lucide-react';
+import Ansi from 'ansi-to-react';
 
 export default function LogViewer({ logs, selectedDeploymentId, logEndRef }) {
   return (
@@ -17,7 +18,7 @@ export default function LogViewer({ logs, selectedDeploymentId, logEndRef }) {
       <div className="flex-1 bg-[#020203] border border-zinc-900 p-4 font-mono text-[12px] overflow-y-auto custom-scrollbar whitespace-pre-wrap leading-tight text-zinc-400">
         {logs ? (
           <div className="space-y-0.5">
-            {logs}
+            <Ansi linkify={false}>{logs}</Ansi>
             <div ref={logEndRef} className="h-4" />
           </div>
         ) : (

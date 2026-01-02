@@ -2,6 +2,17 @@
 
 # Script to test the Ubuntu deployment setup locally using Docker
 
+echo "
+  _    _  ____   ____  _  __ ______ _      _    _ __   __
+ | |  | |/ __ \ / __ \| |/ /|  ____| |    | |  | |\ \ / /
+ | |__| | |  | | |  | | ' / | |__  | |    | |  | | \ V / 
+ |  __  | |  | | |  | |  <  |  __| | |    | |  | |  > <  
+ | |  | | |__| | |__| | . \ | |    | |____| |__| | / . \ 
+ |_|  |_|\____/ \____/|_|\_\|_|    |______|\____/ /_/ \_\\
+"
+echo ">>> INITIALIZING HOOKFLUX TEST ENVIRONMENT <<<"
+echo ""
+
 IMAGE_NAME="hookflux-deploy-test"
 CONTAINER_NAME="hookflux-test-container"
 

@@ -1,7 +1,7 @@
 [
   {
-    "id": "example-app",
-    "name": "Example Application",
+    "id": "hookflux-demo",
+    "name": "HookFlux Dashboard Demo",
     "repo": "user/repo-name",
     "branch": "main",
     "script": "./scripts/deploy-example.sh",

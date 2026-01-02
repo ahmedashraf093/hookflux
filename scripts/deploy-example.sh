@@ -1,5 +1,6 @@
 #!/bin/bash
-echo "Deploying Example App..."
+echo "--- Initializing HookFlux Pipeline ---"
+echo "Current App: $APP_ID"
 sleep 2
 echo "Pulling latest changes..."
 sleep 1
