@@ -1,94 +1,86 @@
 # HookFlux
 
-### Orchestrate Your Infrastructure with Signal-Driven Pipelines
+HookFlux is a self-hosted automation engine that executes multi-step bash pipelines triggered by external webhooks. It provides a real-time terminal interface for monitoring execution logs and managing deployment flows.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/ahmedashraf093/hookflux/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedashraf093/hookflux/actions/workflows/ci.yml)
 
 ![HookFlux Dashboard](home.jpg)
 
-HookFlux is a high-performance, self-hosted automation engine designed to transform external webhooks into complex, multi-step execution flows. Built for developers who demand the control of local bash scripts with the elegance of a modern Terminal UI (TUI), HookFlux turns simple signals into sophisticated infrastructure orchestration.
+## Installation and Deployment
 
----
+### Ubuntu VM
+The automated setup script configures Node.js, Nginx as a reverse proxy, and SSL via Certbot.
 
-## 🚀 Quick Start
-
-HookFlux is designed to run anywhere you can execute a shell.
-
-### Method 1: Ubuntu VM (Recommended)
-Our automated script sets up a production-ready environment with Nginx, SSL (Certbot), and Systemd in minutes:
 ```bash
 git clone https://github.com/ahmedashraf093/hookflux.git
 cd hookflux
 sudo ./deployment/ubuntu/setup.sh your-domain.com
 ```
-*For detailed instructions, see the [Ubuntu Deployment Guide](deployment/ubuntu/README.md).*
+Refer to the [Ubuntu Deployment Guide](deployment/ubuntu/README.md) for details on maintenance and updates.
 
-### Method 2: Docker Swarm
-Deploy as a stack to your cluster:
+### Docker Swarm
+Deploy as a stack using the provided configuration:
 ```bash
 docker stack deploy -c docker-stack.yml hookflux
 ```
 
 ---
 
-## ✨ Key Features
+## Core Features
 
-- **Visual Pipeline Architect**: Construct execution chains with an intuitive drag-and-drop builder. Link modules and configure localized variables via dedicated configuration overlays.
-- **Zero-Latency TTY Streaming**: Experience automation in real-time. Raw terminal output is streamed via Socket.io directly to your dashboard with sub-millisecond latency.
-- **Intelligent Parameter Validation**: Proactively scan configurations for missing parameters or incomplete setups with high-visibility alerts.
-- **Searchable Module Library**: Scale operations by pulling from a centralized library of execution blocks. Preview required parameters and internal logic instantly.
-- **Production-Grade Reliability**: 
-  - **Hybrid Log Engine**: Metadata in SQLite for fast lookups; raw logs on disk for auditing.
-  - **Auto-Maintenance**: 30-day retention policies and DB compaction keep the system lean.
-  - **Security**: HMAC-SHA256 signature verification, JWT authentication, and input sanitization.
-
----
-
-## 🧠 The Philosophy: Fluxes and Modules
-
-HookFlux eliminates repetitive scripting through a powerful abstraction layer:
-
-1. **Modules (The Lego Bricks)**: Define your core logic once. Modules are reusable bash templates with dynamic placeholders (e.g., `{{BRANCH}}`). Build a "Docker Build" or "Discord Notify" module and reuse it globally.
-2. **Fluxes (The Neural Paths)**: Chain your modules together to create a pipeline triggered by a unique webhook slug. 
-
-**The Workflow:**
-1. **Craft**: Write bash logic in the Module Manager.
-2. **Compose**: Drag and drop modules to build a Flux.
-3. **Configure**: Inject project-specific data into the chain.
-4. **Link**: Connect your Flux endpoint to GitHub or any webhook provider.
+- **Pipeline Builder**: Construct execution chains by linking reusable modules.
+- **Real-time Logs**: Live terminal output streaming via Socket.io with full ANSI color support.
+- **Webhook Integration**: Support for GitHub and generic webhooks using both JSON and URL-encoded payloads.
+- **Security**: 
+    - HMAC-SHA256 signature verification for incoming webhooks.
+    - JWT-based authentication for dashboard access.
+    - Input sanitization to prevent command injection.
+- **Version Management**: Automated check for updates against the GitHub repository.
+- **Configuration Validation**: Pre-execution scanning for missing parameters or incomplete setup.
 
 ---
 
-## ⚙️ Configuration
+## Components
 
-Control HookFlux behavior via environment variables:
+### Modules
+Modules are reusable bash templates with dynamic placeholders (e.g., `{{BRANCH}}`, `{{REPO_URL}}`). They serve as the functional building blocks for your pipelines.
+
+### Fluxes
+A Flux is a specific pipeline instance associated with a unique webhook endpoint. It consists of one or more modules executed in a defined sequence.
+
+### Workflow
+1. **Define**: Create bash modules in the Module Manager.
+2. **Compose**: Select modules to build a Flux pipeline.
+3. **Configure**: Assign specific values to module parameters.
+4. **Trigger**: Connect the Flux endpoint to GitHub or any webhook provider.
+
+---
+
+## Configuration
+
+The following environment variables control the application:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ADMIN_PASSWORD` | Access key for the dashboard | (Prompted during setup) |
-| `JWT_SECRET` | Secret for signing auth tokens | (Generated during setup) |
-| `DOMAIN` | The public domain name | `localhost` |
-| `PIPELINE_TIMEOUT`| Max execution time (minutes) | `10` |
+| `ADMIN_PASSWORD` | Dashboard access password | (Prompted during setup) |
+| `JWT_SECRET` | Secret for token signing | (Generated during setup) |
+| `DOMAIN` | Public domain name | `localhost` |
+| `PIPELINE_TIMEOUT`| Max execution time in minutes | `10` |
 | `DATA_DIR` | SQLite database directory | `./` |
-| `LOGS_DIR` | Raw execution logs directory | `./logs` |
+| `LOGS_DIR` | Execution logs directory | `./logs` |
 
 ---
 
-## 🏗️ Technical Architecture
+## Technical Architecture
 
-- **Backend**: Node.js & Express 5 (High-concurrency, non-blocking IO).
-- **Database**: SQLite (Zero-config, fast, self-contained).
-- **Streaming**: Socket.io (Bi-directional real-time logs).
-- **Frontend**: React 19 + Vite + Tailwind CSS (Optimized TUI Aesthetic).
-- **CI/CD**: Fully tested via Jest & GitHub Actions.
+- **Backend**: Node.js and Express 5.
+- **Database**: SQLite via `better-sqlite3`.
+- **Streaming**: Socket.io for bi-directional log data.
+- **Frontend**: React 19, Vite, and Tailwind CSS.
+- **Testing**: Jest and Supertest.
+- **CI**: GitHub Actions.
 
----
-
-## 📄 License
+## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
-
----
-
-**HookFlux: Stop writing scripts. Start building flows.**
