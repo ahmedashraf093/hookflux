@@ -2,12 +2,19 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 
-const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
 const REPO = "ahmedashraf093/hookflux"; // Correct repository for production
 
 let cachedLatestVersion = null;
 let lastChecked = 0;
 const CACHE_TTL = 3600000; // 1 hour
+
+function getPkg() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
+  } catch (e) {
+    return { version: '0.0.0' };
+  }
+}
 
 async function getLatestVersion(currentVersion) {
   const now = Date.now();
@@ -43,7 +50,7 @@ function isNewer(latest, current) {
 }
 
 function getVersionInfo(req, res) {
-  const currentPkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
+  const currentPkg = getPkg();
   const forceCheck = req.query.force === 'true';
   
   if (forceCheck) {
@@ -68,3 +75,5 @@ function getVersionInfo(req, res) {
     });
   });
 }
+
+module.exports = { getVersionInfo, isNewer };
