@@ -1,14 +1,14 @@
 import React from 'react';
-import { Activity, Terminal, Settings, LogOut, Key, Home, ChevronsLeft, ChevronsRight, BookOpen, Menu, X } from 'lucide-react';
+import { Activity, Terminal, Settings, LogOut, Key, Home, ChevronsLeft, ChevronsRight, BookOpen, Menu, X, AlertCircle } from 'lucide-react';
 
-export default function Sidebar({ 
-  fluxes, 
-  activeFlux, 
-  setActiveFlux, 
-  view, 
-  setView, 
-  onLogout, 
-  onNewFlux, 
+export default function Sidebar({
+  fluxes,
+  activeFlux,
+  setActiveFlux,
+  view,
+  setView,
+  onLogout,
+  onNewFlux,
   publicKey,
   isCollapsed,
   setIsCollapsed,
@@ -114,16 +114,18 @@ export default function Sidebar({
       <div className="p-1 border-t border-zinc-800 hidden md:block">
         {versionInfo && (
           <div className={`px-3 py-2 text-[10px] font-bold transition-all ${isCollapsed ? 'text-center' : 'flex items-center justify-between'}`}>
-            <span className="text-zinc-600">v{versionInfo.current}</span>
+            <span className="text-zinc-600 flex items-center gap-1">
+              v{versionInfo.current}
+              {versionInfo.error && <AlertCircle size={10} className="text-zinc-800 hover:text-zinc-500 cursor-help" title={versionInfo.error} />}
+            </span>
             {!isCollapsed && versionInfo.updateAvailable && (
-              <span className="bg-orange-500/10 text-orange-500 px-1.5 py-0.5 rounded animate-pulse cursor-help" title={`New version available: v${versionInfo.latest}`}>
-                UPDATE_READY
+              <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded animate-bounce shadow-lg shadow-blue-500/20 cursor-help" title={`New version available: v${versionInfo.latest}`}>
+                UPDATE!
               </span>
             )}
           </div>
         )}
-        <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
+        <button           onClick={() => setIsCollapsed(!isCollapsed)}
           className="w-full flex items-center justify-center p-1.5 text-xs font-bold text-zinc-600 hover:text-zinc-300 transition-colors"
         >
           {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
