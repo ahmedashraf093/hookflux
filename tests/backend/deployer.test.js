@@ -11,6 +11,13 @@ describe('Deployer Logic', () => {
     if (!fs.existsSync(TEST_DATA_DIR)) fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     process.env.DATA_DIR = TEST_DATA_DIR;
     initSchema();
+    
+    // Explicitly seed generic-bash if initSchema skipped it (e.g. if DB already existed)
+    const existing = db.prepare('SELECT id FROM templates WHERE id = ?').get('generic-bash');
+    if (!existing) {
+      db.prepare('INSERT INTO templates (id, name, content, params) VALUES (?, ?, ?, ?)')
+        .run('generic-bash', 'Custom Script', '#!/bin/bash\n{{SCRIPT_CONTENT}}', JSON.stringify(['SCRIPT_CONTENT']));
+    }
   });
 
   afterAll(() => {
