@@ -1,9 +1,11 @@
-import React from 'react';
-import { X, Copy, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Copy, Check, Key } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function PublicKeyModal({ isOpen, onClose, publicKey }) {
-// ...
+  if (!isOpen) return null;
+  const [copied, setCopied] = useState(false);
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(publicKey);
     setCopied(true);
@@ -56,7 +58,8 @@ export default function PublicKeyModal({ isOpen, onClose, publicKey }) {
             onClick={copyToClipboard}
             className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-4 font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-3"
           >
-            <Copy size={16} /> Copy_Public_Key
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+            {copied ? 'Copied!' : 'Copy_Public_Key'}
           </button>
           <button 
             onClick={onClose}
