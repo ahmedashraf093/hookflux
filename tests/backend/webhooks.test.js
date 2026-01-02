@@ -18,6 +18,21 @@ describe('Webhook Signature Verification', () => {
     expect(verifySignature(req, secret)).toBe(true);
   });
 
+  test('should verify valid signature for urlencoded body', () => {
+    const secret = 'test-secret';
+    // GitHub urlencoded body looks like payload=%7B...%7D
+    const rawBody = Buffer.from('payload=' + encodeURIComponent(JSON.stringify({ a: 1 })));
+    const hmac = crypto.createHmac('sha256', secret);
+    const digest = 'sha256=' + hmac.update(rawBody).digest('hex');
+
+    const req = {
+      headers: { 'x-hub-signature-256': digest },
+      rawBody: rawBody
+    };
+
+    expect(verifySignature(req, secret)).toBe(true);
+  });
+
   test('should return false for invalid signature', () => {
     const req = {
       headers: { 'x-hub-signature-256': 'sha256=invalid' },

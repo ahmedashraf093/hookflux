@@ -87,6 +87,10 @@ startMaintenanceTask();
 app.use(bodyParser.json({
   verify: (req, res, buf) => { req.rawBody = buf; }
 }));
+app.use(bodyParser.urlencoded({
+  extended: true,
+  verify: (req, res, buf) => { req.rawBody = buf; }
+}));
 
 // Serve Static Frontend
 app.use(express.static(UI_DIST));

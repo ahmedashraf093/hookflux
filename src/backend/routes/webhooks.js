@@ -20,7 +20,18 @@ function verifySignature(req, secret) {
 const webhookRouter = (io) => {
   router.post('/:id', (req, res) => {
     const { id } = req.params;
-    const { repository, ref } = req.body;
+    
+    // GitHub can send payload as JSON or urlencoded 'payload' field
+    let payload = req.body;
+    if (req.body && req.body.payload && typeof req.body.payload === 'string') {
+      try {
+        payload = JSON.parse(req.body.payload);
+      } catch (e) {
+        return res.status(400).send('Invalid urlencoded payload JSON');
+      }
+    }
+
+    const { repository, ref } = payload;
     
     const targetFlux = db.prepare('SELECT * FROM apps WHERE id = ?').get(id);
     if (!targetFlux) return res.status(404).send('Flux not found');
