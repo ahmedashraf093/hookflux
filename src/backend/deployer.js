@@ -112,7 +112,7 @@ function runDeploy(appConfig, io) {
 
     const timeoutTimer = setTimeout(() => {
       isTimedOut = true;
-      const timeoutMsg = `\nERROR: Pipeline timed out after ${timeoutMinutes} minutes. Terminating process...\n`;
+      const timeoutMsg = `\n[PIPELINE_TIMEOUT] after ${timeoutMinutes} minutes. Terminating process...\n`;
       emitLog(timeoutMsg, 'error');
       
       try {
@@ -133,7 +133,7 @@ function runDeploy(appConfig, io) {
 
     child.on('error', (err) => {
       clearTimeout(timeoutTimer);
-      const errMsg = `\nFailed to start pipeline: ${err.message}\n`;
+      const errMsg = `\n[PIPELINE_START_FAILED]: ${err.message}\n`;
       emitLog(errMsg, 'error');
       db.prepare('UPDATE deployments SET status = ?, logs = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?')
         .run('failed', fullLogs, deploymentId);
@@ -141,7 +141,7 @@ function runDeploy(appConfig, io) {
     });
 
     child.stdout.on('data', (data) => emitLog(data.toString()));
-    child.stderr.on('data', (data) => emitLog(`ERROR: ${data.toString()}`, 'error'));
+    child.stderr.on('data', (data) => emitLog(data.toString(), 'error'));
 
     child.on('close', (code) => {
       clearTimeout(timeoutTimer);
