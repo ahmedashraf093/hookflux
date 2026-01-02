@@ -1,17 +1,18 @@
 import React from 'react';
 import { Settings, Trash2, Plus, Download } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function FluxManager({ fluxes, onEdit, onDelete }) {
   const copyWebhook = (id) => {
     const url = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':3000' : ''}/webhook/${id}`;
     navigator.clipboard.writeText(url);
-    alert('Webhook URL copied: ' + url);
+    toast.success('Webhook URL copied to clipboard');
   };
 
   const copySecret = (secret) => {
-    if (!secret) return alert('No secret configured for this flux');
+    if (!secret) return toast.error('No secret configured for this flux');
     navigator.clipboard.writeText(secret);
-    alert('Webhook Secret copied to clipboard');
+    toast.success('Webhook Secret copied to clipboard');
   };
 
   const exportWebhookJSON = (flux) => {

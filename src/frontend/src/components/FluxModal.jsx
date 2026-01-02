@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Settings, Trash2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import * as api from '../lib/api';
 
 export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modules }) {
@@ -11,7 +12,7 @@ export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modu
   const [testError, setTestError] = useState('');
 
   const handleTestSSH = async () => {
-    if (!flux.ssh_host || !flux.ssh_user) return alert('Host and User required for testing');
+    if (!flux.ssh_host || !flux.ssh_user) return toast.error('Host and User required for testing');
     setTestStatus('loading');
     setTestError('');
     try {

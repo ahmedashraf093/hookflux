@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldAlert, Lock, ArrowRight } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
 export default function ChangePasswordModal({ isOpen, token, setToken }) {
@@ -22,7 +23,7 @@ export default function ChangePasswordModal({ isOpen, token, setToken }) {
       );
       localStorage.setItem('token', res.data.token);
       setToken(res.data.token);
-      alert('Password updated successfully. System hardened.');
+      toast.success('Password updated successfully. System hardened.');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update password');
     }

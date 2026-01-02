@@ -1,5 +1,6 @@
 import React from 'react';
 import { Play } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import DeploymentHistory from './DeploymentHistory.jsx';
 import LogViewer from './LogViewer.jsx';
 
@@ -34,7 +35,7 @@ export default function Console({
             onClick={() => {
               const url = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':3000' : ''}/webhook/${flux.id}`;
               navigator.clipboard.writeText(url);
-              alert('Webhook URL copied');
+              toast.success('Webhook URL copied to clipboard');
             }}
             className="px-3 py-1.5 border border-zinc-800 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-zinc-800 transition-colors text-zinc-500"
           >

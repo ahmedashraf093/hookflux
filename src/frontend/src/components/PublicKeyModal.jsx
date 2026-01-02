@@ -1,12 +1,14 @@
 import React from 'react';
-import { X, Key, Copy } from 'lucide-react';
+import { X, Copy, Check } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function PublicKeyModal({ isOpen, onClose, publicKey }) {
-  if (!isOpen) return null;
-
+// ...
   const copyToClipboard = () => {
     navigator.clipboard.writeText(publicKey);
-    alert('Public key copied to clipboard');
+    setCopied(true);
+    toast.success('Public key copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
