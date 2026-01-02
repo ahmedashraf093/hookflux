@@ -85,6 +85,17 @@ export default function FluxModal({ flux, setFlux, onSave, onClose, isEdit, modu
             <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest text-zinc-600">Target Branch_</label>
             <input className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all" value={flux.branch} onChange={e => setFlux({...flux, branch: e.target.value})} required />
           </div>
+          <div className="col-span-2">
+            <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest text-zinc-600">Webhook Secret_</label>
+            <input 
+              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all font-mono" 
+              value={flux.webhook_secret || ''} 
+              onChange={e => setFlux({...flux, webhook_secret: e.target.value})} 
+              placeholder="Enter a secure random string"
+              type="password"
+            />
+            <p className="text-[9px] text-zinc-700 mt-2 uppercase tracking-tighter italic">Used for HMAC-SHA256 verification. Keep this private and paste it into GitHub's 'Secret' field.</p>
+          </div>
           
           <div className="col-span-2">
             <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-2">

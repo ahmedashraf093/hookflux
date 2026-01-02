@@ -8,6 +8,12 @@ export default function FluxManager({ fluxes, onEdit, onDelete }) {
     alert('Webhook URL copied: ' + url);
   };
 
+  const copySecret = (secret) => {
+    if (!secret) return alert('No secret configured for this flux');
+    navigator.clipboard.writeText(secret);
+    alert('Webhook Secret copied to clipboard');
+  };
+
   const exportWebhookJSON = (flux) => {
     const webhookConfig = [{
       id: flux.id,
@@ -79,9 +85,15 @@ export default function FluxManager({ fluxes, onEdit, onDelete }) {
             <div className="flex gap-3">
               <button 
                 onClick={() => copyWebhook(flux.id)}
-                className="flex-[2] py-2.5 bg-zinc-950 border border-zinc-800 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 transition-all flex items-center justify-center gap-3"
+                className="flex-1 py-2.5 bg-zinc-950 border border-zinc-800 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 transition-all flex items-center justify-center gap-3"
               >
                 <Plus size={14} /> Copy_Endpoint
+              </button>
+              <button 
+                onClick={() => copySecret(flux.webhook_secret)}
+                className="flex-1 py-2.5 bg-zinc-950 border border-zinc-800 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:bg-zinc-800 hover:text-blue-400 transition-all flex items-center justify-center gap-3"
+              >
+                <Settings size={14} /> Copy_Secret
               </button>
               <button 
                 onClick={() => exportWebhookJSON(flux)}
