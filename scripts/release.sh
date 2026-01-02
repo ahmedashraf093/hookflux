@@ -1,32 +1,61 @@
 #!/bin/bash
 
-# HookFlux Release Script
-# Usage: ./scripts/release.sh <version> (e.g., 1.0.1)
+# HookFlux Smart Release Script
+# Usage: ./scripts/release.sh [patch|minor|major|<version>]
 
 set -e
 
-VERSION=$1
+BUMP_TYPE=${1:-patch}
 
-if [ -z "$VERSION" ]; then
-    echo "Usage: ./scripts/release.sh <version>"
+# 1. Safety Check: Ensure we are on main
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$BRANCH" != "main" ]; then
+    echo "Error: Releases must be created from the 'main' branch."
     exit 1
 fi
 
-# 1. Update package.json
-echo "Updating package.json to version $VERSION..."
-npm version "$VERSION" --no-git-tag-version
+# 2. Safety Check: Ensure no uncommitted changes
+if [[ -n $(git status -s) ]]; then
+    echo "Error: You have uncommitted changes. Please commit or stash them first."
+    exit 1
+fi
 
-# 2. Commit and Tag
-echo "Committing and tagging..."
+# 3. Pull latest
+echo "Pulling latest changes..."
+git pull origin main
+
+# 4. Run Tests
+echo "Running tests to ensure quality..."
+npm test
+
+# 5. Bump Version
+echo "Bumping version ($BUMP_TYPE)..."
+# npm version handles package.json, package-lock.json, and the git tag
+NEW_VERSION=$(npm version "$BUMP_TYPE" --no-git-tag-version)
+VERSION_CLEAN=${NEW_VERSION#v}
+
+echo "New Version: $VERSION_CLEAN"
+
+# 6. Commit and Tag
+echo "Committing and tagging v$VERSION_CLEAN..."
 git add package.json package-lock.json
-git commit -m "chore: release v$VERSION"
-git tag -a "v$VERSION" -m "Release v$VERSION"
+git commit -m "chore: release v$VERSION_CLEAN"
+git tag -a "v$VERSION_CLEAN" -m "Release v$VERSION_CLEAN"
 
-# 3. Push
-echo "Pushing changes and tags to origin..."
+# 7. Push
+echo "Pushing to origin..."
 git push origin main
-git push origin "v$VERSION"
+git push origin "v$VERSION_CLEAN"
 
-echo "Successfully released v$VERSION!"
-echo "If you have the GitHub CLI installed, you can create a release with:"
-echo "gh release create v$VERSION --title \"v$VERSION\" --generate-notes"
+# 8. GitHub Release
+if command -v gh &> /dev/null; then
+    echo "Creating GitHub Release..."
+    gh release create "v$VERSION_CLEAN" --title "v$VERSION_CLEAN" --generate-notes
+else
+    echo "Warning: GitHub CLI (gh) not found. Skipping release creation."
+    echo "You can manually create it at: https://github.com/ahmedashraf093/hookflux/releases/new?tag=v$VERSION_CLEAN"
+fi
+
+echo "---------------------------------------------------"
+echo "Successfully released v$VERSION_CLEAN!"
+echo "---------------------------------------------------"
