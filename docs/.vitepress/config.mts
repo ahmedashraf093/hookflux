@@ -4,7 +4,9 @@ export default defineConfig({
   base: '/hookflux/',
   title: "HookFlux",
   description: "Self-hosted webhook deployment automation",
+  head: [['link', { rel: 'icon', href: '/hookflux/logo.svg' }]],
   themeConfig: {
+    logo: '/logo.svg',
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/getting-started' },

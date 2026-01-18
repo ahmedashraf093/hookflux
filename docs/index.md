@@ -5,6 +5,9 @@ hero:
   name: "HookFlux"
   text: "Self-Hosted Webhook Deployment"
   tagline: Automate your deployments with real-time logs and Docker Swarm.
+  image:
+    src: /logo.svg
+    alt: HookFlux Logo
   actions:
     - theme: brand
       text: Get Started
