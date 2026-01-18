@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  base: '/hookflux/',
   title: "HookFlux",
   description: "Self-hosted webhook deployment automation",
   themeConfig: {
