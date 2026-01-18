@@ -1,8 +1,8 @@
 [
   {
-    "id": "hookflux-demo",
-    "name": "HookFlux Dashboard Demo",
-    "repo": "user/repo-name",
+    "id": "hookflux",
+    "name": "HookFlux Dashboard",
+    "repo": "ahmedashraf093/hookflux",
     "branch": "main",
     "script": "./scripts/deploy-example.sh",
     "cwd": "."

@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    image: hookflux:latest
+    image: ahmeda123/hookflux:latest
     build: .
     env_file: .env
     networks:

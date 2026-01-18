@@ -1,0 +1,39 @@
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  title: "HookFlux",
+  description: "Self-hosted webhook deployment automation",
+  themeConfig: {
+    nav: [
+      { text: 'Home', link: '/' },
+      { text: 'Guide', link: '/getting-started' },
+      { text: 'GitHub', link: 'https://github.com/ahmedashraf093/hookflux' }
+    ],
+
+    sidebar: [
+      {
+        text: 'Introduction',
+        items: [
+          { text: 'Getting Started', link: '/getting-started' },
+          { text: 'Core Concepts', link: '/concepts' }
+        ]
+      },
+      {
+        text: 'Usage',
+        items: [
+          { text: 'Configuration', link: '/configuration' },
+          { text: 'Webhooks & Integrations', link: '/webhooks' }
+        ]
+      }
+    ],
+
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/ahmedashraf093/hookflux' }
+    ],
+
+    footer: {
+      message: 'Released under the MIT License.',
+      copyright: 'Copyright © 2026 Ahmed'
+    }
+  }
+})

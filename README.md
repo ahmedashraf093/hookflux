@@ -19,8 +19,21 @@ sudo ./deployment/ubuntu/setup.sh your-domain.com
 ```
 Refer to the [Ubuntu Deployment Guide](deployment/ubuntu/README.md) for details on maintenance and updates.
 
+### Docker Run (Quick Start)
+You can run HookFlux directly using the pre-built image:
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --name hookflux \
+  ahmeda123/hookflux:latest
+```
+
 ### Docker Swarm
-Deploy as a stack using the provided configuration:
+Deploy as a stack using the provided configuration (uses `ahmeda123/hookflux:latest` by default):
 ```bash
 docker stack deploy -c docker-stack.yml hookflux
 ```
@@ -80,6 +93,19 @@ The following environment variables control the application:
 - **Frontend**: React 19, Vite, and Tailwind CSS.
 - **Testing**: Jest and Supertest.
 - **CI**: GitHub Actions.
+
+## Development
+
+### Building and Publishing Docker Image
+To release a new version to Docker Hub, use the provided helper script. This will build the image, tag it with the version from `package.json`, and push it.
+
+```bash
+# Default (pushes to ahmeda123/hookflux)
+./scripts/publish-image.sh
+
+# Custom User/Org
+./scripts/publish-image.sh myusername
+```
 
 ## License
 
