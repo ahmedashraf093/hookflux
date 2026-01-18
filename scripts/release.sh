@@ -47,6 +47,10 @@ echo "Pushing to origin..."
 git push origin main
 git push origin "v$VERSION_CLEAN"
 
+# 7b. Publish Docker Image
+echo "🐳 Publishing Docker image..."
+./scripts/publish-image.sh
+
 # 8. GitHub Release
 if command -v gh &> /dev/null; then
     echo "Creating GitHub Release..."
