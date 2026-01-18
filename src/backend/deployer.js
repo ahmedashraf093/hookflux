@@ -4,6 +4,7 @@ const path = require('path');
 const { db } = require('./db');
 
 const LOGS_DIR = process.env.LOGS_DIR || path.join(__dirname, '../../logs');
+const activeDeployments = new Map();
 
 function sanitize(val, regex) {
   const str = String(val);
@@ -48,6 +49,39 @@ function prepareScript(appConfig, flowSteps) {
   return fullFlowScript;
 }
 
+function stopDeployment(deploymentId, io) {
+  const active = activeDeployments.get(parseInt(deploymentId));
+  if (active) {
+    const { child, timeoutTimer, logStream, appId, fullLogs } = active;
+    clearTimeout(timeoutTimer);
+    
+    // Kill the process group
+    try {
+      child.kill('SIGTERM');
+      // Force kill if not dead after 2s
+      setTimeout(() => {
+        if (!child.killed) child.kill('SIGKILL');
+      }, 2000);
+    } catch (e) {
+      console.error('Error killing process:', e);
+    }
+
+    const abortMsg = '\n[MANUAL_ABORT] Deployment stopped by user.\n';
+    logStream.write(abortMsg);
+    io.emit('log', { appId, deploymentId, data: abortMsg, type: 'error' });
+
+    activeDeployments.delete(parseInt(deploymentId));
+
+    // Update DB immediately
+    db.prepare('UPDATE deployments SET status = ?, logs = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('aborted', fullLogs + abortMsg, deploymentId);
+    
+    io.emit('status', { appId, deploymentId, status: 'aborted' });
+    return true;
+  }
+  return false;
+}
+
 function runDeploy(appConfig, io) {
   try {
     const deployment = db.prepare('INSERT INTO deployments (app_id, status) VALUES (?, ?)').run(appConfig.id, 'running');
@@ -63,6 +97,10 @@ function runDeploy(appConfig, io) {
       fullLogs += data;
       logStream.write(data);
       io.emit('log', { appId: appConfig.id, deploymentId, data, type });
+      
+      // Update the stored logs reference for DB update on abort
+      const active = activeDeployments.get(deploymentId);
+      if (active) active.fullLogs = fullLogs;
     };
 
     emitLog(`Initializing pipeline for ${appConfig.name} (ID: ${deploymentId})...
@@ -131,8 +169,21 @@ function runDeploy(appConfig, io) {
       child.stdin.end();
     }
 
+    // Store active deployment
+    activeDeployments.set(deploymentId, { 
+      child, 
+      timeoutTimer, 
+      logStream, 
+      appId: appConfig.id,
+      fullLogs 
+    });
+
     child.on('error', (err) => {
+      if (!activeDeployments.has(deploymentId)) return; // Already handled (e.g. aborted)
+      
       clearTimeout(timeoutTimer);
+      activeDeployments.delete(deploymentId);
+      
       const errMsg = `\n[PIPELINE_START_FAILED]: ${err.message}\n`;
       emitLog(errMsg, 'error');
       db.prepare('UPDATE deployments SET status = ?, logs = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?')
@@ -144,7 +195,11 @@ function runDeploy(appConfig, io) {
     child.stderr.on('data', (data) => emitLog(data.toString(), 'error'));
 
     child.on('close', (code) => {
+      if (!activeDeployments.has(deploymentId)) return; // Already handled (e.g. aborted)
+      
       clearTimeout(timeoutTimer);
+      activeDeployments.delete(deploymentId);
+      
       const status = isTimedOut ? 'failed' : (code === 0 ? 'success' : 'failed');
       const endMsg = isTimedOut 
         ? `\nPipeline terminated due to timeout.\n`
@@ -173,4 +228,4 @@ function runDeploy(appConfig, io) {
   }
 }
 
-module.exports = { runDeploy, sanitize, prepareScript };
+module.exports = { runDeploy, sanitize, prepareScript, stopDeployment };

@@ -200,6 +200,13 @@ export default function App() {
     } catch (err) { toast.error('Failed to start pipeline'); }
   };
 
+  const stopDeploy = async (id, deploymentId) => {
+    try {
+      await api.fluxes.stop(id, deploymentId);
+      toast.success('Stop signal sent');
+    } catch (err) { toast.error('Failed to stop pipeline'); }
+  };
+
   const saveFlux = async (e) => {
     e.preventDefault();
     try {
@@ -313,6 +320,7 @@ export default function App() {
             deployments={deployments}
             selectedDeploymentId={selectedDeploymentId}
             onTriggerDeploy={triggerDeploy}
+            onStopDeploy={stopDeploy}
             onSelectDeployment={handleSelectDeployment}
             logs={logs[selectedDeploymentId]}
             logEndRef={logEndRef}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import DeploymentHistory from './DeploymentHistory.jsx';
 import LogViewer from './LogViewer.jsx';
@@ -9,10 +9,14 @@ export default function Console({
   deployments, 
   selectedDeploymentId, 
   onTriggerDeploy, 
+  onStopDeploy,
   onSelectDeployment, 
   logs, 
   logEndRef 
 }) {
+  const currentDeployment = deployments.find(d => d.id === selectedDeploymentId);
+  const isRunning = currentDeployment?.status === 'running';
+
   if (!flux) {
     return (
       <div className="flex-1 flex items-center justify-center text-zinc-700 uppercase tracking-widest text-xs italic">
@@ -42,12 +46,23 @@ export default function Console({
             Copy_Webhook
           </button>
         </div>
-        <button 
-          onClick={() => onTriggerDeploy(flux.id)} 
-          className="bg-zinc-100 text-black px-6 py-2.5 font-black flex items-center gap-3 uppercase text-xs tracking-[0.2em] active:scale-95 transition-all hover:bg-white shadow-xl"
-        >
-          <Play size={16} fill="currentColor" /> Execute_Pipeline
-        </button>
+        <div className="flex gap-2">
+          {isRunning && (
+            <button 
+              onClick={() => onStopDeploy(flux.id, selectedDeploymentId)} 
+              className="bg-red-500/10 border border-red-500/50 text-red-500 px-6 py-2.5 font-black flex items-center gap-3 uppercase text-xs tracking-[0.2em] active:scale-95 transition-all hover:bg-red-500 hover:text-white"
+            >
+              <Square size={16} fill="currentColor" /> Stop_Execution
+            </button>
+          )}
+          <button 
+            onClick={() => onTriggerDeploy(flux.id)} 
+            disabled={isRunning}
+            className={`px-6 py-2.5 font-black flex items-center gap-3 uppercase text-xs tracking-[0.2em] active:scale-95 transition-all shadow-xl ${isRunning ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-zinc-100 text-black hover:bg-white'}`}
+          >
+            <Play size={16} fill="currentColor" /> Execute_Pipeline
+          </button>
+        </div>
       </div>
       <div className="flex-1 flex min-h-0 overflow-hidden">
         <DeploymentHistory 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../db');
-const { runDeploy } = require('../deployer');
+const { runDeploy, stopDeployment } = require('../deployer');
 const { logAction } = require('../audit');
 const { spawn } = require('child_process');
 
@@ -71,6 +71,24 @@ module.exports = (io) => {
       res.status(202).json({ success: true, deploymentId });
     } else {
       res.status(404).send('Flux not found');
+    }
+  });
+
+  router.post('/:id/deployments/:deploymentId/stop', (req, res) => {
+    const { id, deploymentId } = req.params;
+    
+    // Verify ownership (the deployment must belong to the flux)
+    const deployment = db.prepare('SELECT app_id FROM deployments WHERE id = ?').get(deploymentId);
+    if (!deployment || deployment.app_id !== id) {
+       return res.status(404).json({ error: 'Deployment not found for this Flux' });
+    }
+
+    const stopped = stopDeployment(deploymentId, io);
+    if (stopped) {
+      logAction(req.user.userId, 'STOP_DEPLOY', { id, deploymentId }, req.ip);
+      res.json({ success: true, message: 'Deployment stopping...' });
+    } else {
+      res.status(400).json({ error: 'Deployment is not running or could not be stopped' });
     }
   });
 
