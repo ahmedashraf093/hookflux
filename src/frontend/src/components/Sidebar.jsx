@@ -104,6 +104,13 @@ export default function Sidebar({
           <Settings size={16} /> {!isCollapsed && 'Settings'}
         </button>
         <button 
+          onClick={() => { setView('doctor'); setIsMobileOpen(false); }}
+          title={isCollapsed ? 'System Doctor' : ''}
+          className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold transition-colors ${isCollapsed ? 'justify-center' : ''} ${view === 'doctor' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-emerald-400'}`}
+        >
+          <Activity size={16} className={view === 'doctor' ? 'text-emerald-500' : ''} /> {!isCollapsed && 'Doctor'}
+        </button>
+        <button 
           onClick={onLogout} 
           title={isCollapsed ? 'Logout' : ''}
           className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-red-900 hover:text-red-500 transition-colors mt-1 ${isCollapsed ? 'justify-center' : ''}`}>

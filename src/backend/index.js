@@ -14,6 +14,7 @@ const { startMaintenanceTask } = require('./maintenance');
 const { getPublicKey } = require('./ssh');
 const { getRecentLogs } = require('./audit');
 const { getVersionInfo } = require('./version');
+const { runAllChecks } = require('./doctor');
 
 const DOMAIN = process.env.DOMAIN || 'localhost';
 
@@ -114,6 +115,10 @@ app.get('/api/system/version', (req, res, next) => {
 app.get('/api/system/public-key', (req, res) => {
   const key = getPublicKey();
   key ? res.json({ publicKey: key }) : res.status(500).send('Failed to generate key');
+});
+
+app.get('/api/system/doctor', (req, res) => {
+  res.json(runAllChecks());
 });
 
 app.get('/api/system/audit', (req, res) => {

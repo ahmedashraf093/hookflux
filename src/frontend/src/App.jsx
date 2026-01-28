@@ -16,6 +16,7 @@ import Documentation from './components/Documentation.jsx';
 import PublicKeyModal from './components/PublicKeyModal.jsx';
 import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 import AuditLog from './components/AuditLog.jsx';
+import Doctor from './components/Doctor.jsx';
 
 import * as api from './lib/api';
 
@@ -314,6 +315,8 @@ export default function App() {
               <AuditLog logs={auditLogs} />
             </div>
           </div>
+        ) : view === 'doctor' ? (
+          <Doctor />
         ) : activeFluxId ? (
           <Console 
             flux={activeFluxConfig}

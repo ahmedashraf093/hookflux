@@ -9,6 +9,7 @@
     "dev": "npm run server & npm run ui",
     "build": "vite build",
     "start": "NODE_ENV=production node src/backend/index.js",
+    "doctor": "node scripts/doctor.js",
     "test": "cross-env NODE_ENV=test jest --detectOpenHandles --forceExit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

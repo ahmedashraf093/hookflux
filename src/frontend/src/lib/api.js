@@ -42,6 +42,7 @@ export const system = {
   getAuditLogs: () => api.get('/system/audit'),
   getHealth: () => api.get('/health'),
   getVersion: () => api.get('/system/version'),
+  getDoctor: () => api.get('/system/doctor'),
 };
 
 export const deployments = {
